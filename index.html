@@ -7,29 +7,29 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root{
-    --bg:#0F1620;
-    --surface:#161F2C;
-    --surface-2:#1E293A;
-    --border:#2C3B4E;
-    --ink:#EAEEF3;
-    --ink-dim:#9AACC0;
-    --ink-faint:#66788F;
-    --accent:#F2994A;
-    --accent-ink:#1A1206;
-    --accent-soft:#3A2A15;
-    --good:#3FC98A;
-    --good-soft:#12332A;
-    --warn:#F0B94C;
-    --warn-soft:#3A2E13;
+    --bg:#0D1420;
+    --surface:#141C2B;
+    --surface-2:#1B2537;
+    --border:#293449;
+    --ink:#E8ECF3;
+    --ink-dim:#96A3B8;
+    --ink-faint:#62718A;
+    --accent:#2FCBB0;
+    --accent-ink:#062420;
+    --accent-soft:#123A34;
+    --good:#4ADE80;
+    --good-soft:#153524;
+    --warn:#F2C14E;
+    --warn-soft:#3A3013;
     --bad:#F0685E;
     --bad-soft:#3A1E1C;
     --radius:6px;
     --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 18px rgba(0,0,0,.3);
-    --grp-densidad-bg:#173049;     --grp-densidad-fg:#7DC2F2;
+    --grp-densidad-bg:#16304B;     --grp-densidad-fg:#7EC4F2;
     --grp-quimico-bg:#1E3324;      --grp-quimico-fg:#8FD9A8;
-    --grp-resistencia-bg:#173934;  --grp-resistencia-fg:#5FE0C6;
-    --grp-compositos-bg:#33203A;   --grp-compositos-fg:#E2A0DE;
-    --grp-mineralogia-bg:#25214A;  --grp-mineralogia-fg:#B0A6F5;
+    --grp-resistencia-bg:#3A1F2C;  --grp-resistencia-fg:#F0A8C4;
+    --grp-compositos-bg:#312046;   --grp-compositos-fg:#C7A8F2;
+    --grp-mineralogia-bg:#2A2350;  --grp-mineralogia-fg:#B0A6F5;
   }
 
   *{box-sizing:border-box;}
@@ -304,53 +304,49 @@
     display:flex;flex-direction:column;gap:12px;
   }
   .gate-eyebrow{color:var(--accent);}
-  .gate-card h2{margin:0;font-size:19px;text-wrap:balance;}
-  .gate-copy{margin:0;font-size:13px;color:var(--ink-dim);}
-  .gate-field{display:flex;flex-direction:column;gap:5px;}
-  .gate-field label{font-size:11.5px;color:var(--ink-dim);}
-  .gate-field select, .gate-field input{width:100%;}
-  .gate-submit{justify-content:center;margin-top:4px;}
-  .gate-note{margin:0;font-size:11px;color:var(--ink-faint);}
-  .gate-field .pw-wrap{position:relative;display:flex;}
-  .gate-field .pw-wrap input{flex:1;padding-right:36px;}
-  .pw-toggle{
-    position:absolute;right:4px;top:50%;transform:translateY(-50%);
-    border:none;background:none;color:var(--ink-faint);cursor:pointer;
-    padding:6px;border-radius:4px;display:inline-flex;
+  .gate-logo{display:flex;align-items:center;gap:8px;color:var(--accent);}
+  .gate-logo svg{width:22px;height:22px;flex:none;}
+  .gate-logo span{font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--accent);}
+  .gate-sub{margin:-4px 0 4px;font-size:13px;color:var(--ink-dim);}
+  .gate-field{display:flex;flex-direction:column;gap:6px;}
+  .gate-field label{
+    font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;
+    text-transform:uppercase;letter-spacing:.07em;font-size:11px;color:var(--ink-dim);
   }
-  .pw-toggle:hover{color:var(--ink);}
-  .pw-toggle svg{width:16px;height:16px;}
+  .gate-field select, .gate-field input{width:100%;}
+  .gate-submit{justify-content:center;margin-top:6px;font-size:14px;padding:11px 14px;}
+  .pw-toggle-link{
+    align-self:flex-start;border:none;background:none;color:var(--ink-dim);
+    cursor:pointer;font-size:12px;padding:2px 0;margin-top:-1px;
+  }
+  .pw-toggle-link:hover{color:var(--accent);}
   .gate-error{
     margin:0;font-size:12.5px;color:var(--bad);background:var(--bad-soft);
     border:1px solid var(--bad);border-radius:var(--radius);padding:8px 10px;
   }
   .gate-error[hidden]{display:none;}
-  .gate-card .logout-row{display:flex;justify-content:flex-end;}
 </style>
 </head>
 <body>
 
 <div class="gate-overlay" id="gate" hidden>
   <div class="gate-card">
-    <span class="eyebrow gate-eyebrow">LabTrack</span>
-    <h2>Iniciar sesión</h2>
-    <p class="gate-copy">Ingresa con tu correo y contraseña para ver y registrar datos. Cada registro queda marcado automáticamente con tu correo en "Ingresado por".</p>
+    <div class="gate-logo">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 15.5 8 6l3 4.5 2-2.5 4.5 7.5"/></svg>
+      <span>LabTrack</span>
+    </div>
+    <p class="gate-sub">Control de calidad · laboratorio</p>
     <p class="gate-error" id="gateError" hidden></p>
     <div class="gate-field">
       <label for="gateEmail">Usuario o correo electrónico</label>
-      <input type="email" id="gateEmail" autocomplete="username" placeholder="nombre@empresa.com">
+      <input type="text" id="gateEmail" autocomplete="username" placeholder="nombre o correo@empresa.pe">
     </div>
     <div class="gate-field">
       <label for="gatePassword">Contraseña</label>
-      <div class="pw-wrap">
-        <input type="password" id="gatePassword" autocomplete="current-password" placeholder="••••••••">
-        <button type="button" class="pw-toggle" id="gatePwToggle" title="Mostrar/ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1.8 10s3-6 8.2-6 8.2 6 8.2 6-3 6-8.2 6-8.2-6-8.2-6Z"/><circle cx="10" cy="10" r="2.4"/></svg>
-        </button>
-      </div>
+      <input type="password" id="gatePassword" autocomplete="current-password" placeholder="••••••••">
+      <button type="button" class="pw-toggle-link" id="gatePwToggle">👁 Mostrar</button>
     </div>
-    <button type="button" class="btn primary gate-submit" id="gateSubmit">Iniciar sesión →</button>
-    <p class="gate-note">¿No tienes cuenta? Pídele a tu administrador que te cree un usuario en LabTrack.</p>
+    <button type="button" class="btn primary gate-submit" id="gateSubmit">Iniciar Sesión →</button>
   </div>
 </div>
 
@@ -358,7 +354,7 @@
   <header class="topbar">
     <div class="brand">
       <span class="eyebrow">Control de calidad · laboratorio</span>
-      <h1>LabTrack — Envíos y resultados</h1>
+      <h1>LabTrack</h1>
     </div>
     <div class="top-controls">
       <div class="segmented" id="areaToggle" role="tablist" aria-label="Área"></div>
@@ -409,6 +405,18 @@
   var SUPABASE_URL = "https://etyvvzcdstsdyvlyfodu.supabase.co";
   var SUPABASE_KEY = "sb_publishable_5Tdi2yr8Mzs6cxIVT0_5oQ_dUZw4CgC";
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  /* Supabase Auth solo acepta "correos". Para poder usar un nombre corto
+     como usuario (ej. "jimena" en vez de "jimena@empresa.pe"), si lo que
+     se escribe no tiene "@" le agregamos este dominio por dentro antes de
+     mandarlo — así cada cuenta creada en Supabase debe llamarse
+     "nombre@labtrack.app" para que el nombre corto funcione al ingresar. */
+  var LOGIN_DOMAIN = "@labtrack.app";
+  function toLoginEmail(value){
+    value = (value||"").trim();
+    if(!value) return value;
+    return value.indexOf("@") === -1 ? (value.toLowerCase() + LOGIN_DOMAIN) : value;
+  }
 
   /* ===================== data model ===================== */
 
@@ -610,9 +618,10 @@
   }
 
   function submitGate(){
-    var email = $("#gateEmail").value.trim();
+    var typed = $("#gateEmail").value.trim();
+    var email = toLoginEmail(typed);
     var password = $("#gatePassword").value;
-    if(!email){ $("#gateEmail").focus(); return; }
+    if(!typed){ $("#gateEmail").focus(); return; }
     if(!password){ $("#gatePassword").focus(); return; }
     showGateError("");
     setGateBusy(true);
@@ -1001,7 +1010,9 @@
     $("#gatePassword").addEventListener("keydown", function(e){ if(e.key==="Enter") submitGate(); });
     $("#gatePwToggle").addEventListener("click", function(){
       var pw = $("#gatePassword");
-      pw.type = (pw.type === "password") ? "text" : "password";
+      var showing = pw.type === "text";
+      pw.type = showing ? "password" : "text";
+      this.textContent = showing ? "👁 Mostrar" : "🙈 Ocultar";
     });
     $("#exportBtn").addEventListener("click", exportExcel);
 
