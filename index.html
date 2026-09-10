@@ -3,83 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bitácora QAQC</title>
+<title>LabTrack</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
   :root{
-    --bg:#F5F3EE;
-    --surface:#FFFFFF;
-    --surface-2:#EEE9DD;
-    --border:#DDD5C2;
-    --ink:#23221D;
-    --ink-dim:#6E6A5D;
-    --ink-faint:#9A947F;
-    --accent:#B5622A;
-    --accent-ink:#FFFFFF;
-    --accent-soft:#F1DCC9;
-    --good:#2C7A73;
-    --good-soft:#DCEEEA;
-    --warn:#B4791C;
-    --warn-soft:#F3E4C6;
-    --bad:#B23B3B;
-    --bad-soft:#F5DEDA;
+    --bg:#0F1620;
+    --surface:#161F2C;
+    --surface-2:#1E293A;
+    --border:#2C3B4E;
+    --ink:#EAEEF3;
+    --ink-dim:#9AACC0;
+    --ink-faint:#66788F;
+    --accent:#F2994A;
+    --accent-ink:#1A1206;
+    --accent-soft:#3A2A15;
+    --good:#3FC98A;
+    --good-soft:#12332A;
+    --warn:#F0B94C;
+    --warn-soft:#3A2E13;
+    --bad:#F0685E;
+    --bad-soft:#3A1E1C;
     --radius:6px;
-    --shadow:0 1px 2px rgba(35,34,29,.06),0 4px 14px rgba(35,34,29,.05);
-    --grp-densidad-bg:#DCE6EE;     --grp-densidad-fg:#2F6690;
-    --grp-quimico-bg:#E3EAD7;      --grp-quimico-fg:#5B7A34;
-    --grp-resistencia-bg:#EEE1D2;  --grp-resistencia-fg:#8A5A28;
-    --grp-compositos-bg:#ECDCE7;   --grp-compositos-fg:#8A4A78;
-    --grp-mineralogia-bg:#DEDCF1;  --grp-mineralogia-fg:#5850A6;
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#1B1A17;
-      --surface:#232220;
-      --surface-2:#2B2925;
-      --border:#3C3833;
-      --ink:#ECE7DC;
-      --ink-dim:#AEA895;
-      --ink-faint:#7C7767;
-      --accent:#E08A4C;
-      --accent-ink:#221605;
-      --accent-soft:#4A331F;
-      --good:#4FB3A6;
-      --good-soft:#1E3733;
-      --warn:#E0AA4C;
-      --warn-soft:#3C3013;
-      --bad:#E27A7A;
-      --bad-soft:#3B2222;
-      --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
-      --grp-densidad-bg:#1E313E;     --grp-densidad-fg:#8FC0E3;
-      --grp-quimico-bg:#2B3420;      --grp-quimico-fg:#B4D488;
-      --grp-resistencia-bg:#3B2C1A;  --grp-resistencia-fg:#E0AD73;
-      --grp-compositos-bg:#3A2735;   --grp-compositos-fg:#E0A3CC;
-      --grp-mineralogia-bg:#282544;  --grp-mineralogia-fg:#B3ABEB;
-    }
-  }
-  :root[data-theme="dark"]{
-    --bg:#1B1A17;
-    --surface:#232220;
-    --surface-2:#2B2925;
-    --border:#3C3833;
-    --ink:#ECE7DC;
-    --ink-dim:#AEA895;
-    --ink-faint:#7C7767;
-    --accent:#E08A4C;
-    --accent-ink:#221605;
-    --accent-soft:#4A331F;
-    --good:#4FB3A6;
-    --good-soft:#1E3733;
-    --warn:#E0AA4C;
-    --warn-soft:#3C3013;
-    --bad:#E27A7A;
-    --bad-soft:#3B2222;
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
-    --grp-densidad-bg:#1E313E;     --grp-densidad-fg:#8FC0E3;
-    --grp-quimico-bg:#2B3420;      --grp-quimico-fg:#B4D488;
-    --grp-resistencia-bg:#3B2C1A;  --grp-resistencia-fg:#E0AD73;
-    --grp-compositos-bg:#3A2735;   --grp-compositos-fg:#E0A3CC;
-    --grp-mineralogia-bg:#282544;  --grp-mineralogia-fg:#B3ABEB;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 18px rgba(0,0,0,.3);
+    --grp-densidad-bg:#173049;     --grp-densidad-fg:#7DC2F2;
+    --grp-quimico-bg:#1E3324;      --grp-quimico-fg:#8FD9A8;
+    --grp-resistencia-bg:#173934;  --grp-resistencia-fg:#5FE0C6;
+    --grp-compositos-bg:#33203A;   --grp-compositos-fg:#E2A0DE;
+    --grp-mineralogia-bg:#25214A;  --grp-mineralogia-fg:#B0A6F5;
   }
 
   *{box-sizing:border-box;}
@@ -361,25 +311,46 @@
   .gate-field select, .gate-field input{width:100%;}
   .gate-submit{justify-content:center;margin-top:4px;}
   .gate-note{margin:0;font-size:11px;color:var(--ink-faint);}
+  .gate-field .pw-wrap{position:relative;display:flex;}
+  .gate-field .pw-wrap input{flex:1;padding-right:36px;}
+  .pw-toggle{
+    position:absolute;right:4px;top:50%;transform:translateY(-50%);
+    border:none;background:none;color:var(--ink-faint);cursor:pointer;
+    padding:6px;border-radius:4px;display:inline-flex;
+  }
+  .pw-toggle:hover{color:var(--ink);}
+  .pw-toggle svg{width:16px;height:16px;}
+  .gate-error{
+    margin:0;font-size:12.5px;color:var(--bad);background:var(--bad-soft);
+    border:1px solid var(--bad);border-radius:var(--radius);padding:8px 10px;
+  }
+  .gate-error[hidden]{display:none;}
+  .gate-card .logout-row{display:flex;justify-content:flex-end;}
 </style>
 </head>
 <body>
 
 <div class="gate-overlay" id="gate" hidden>
   <div class="gate-card">
-    <span class="eyebrow gate-eyebrow">Antes de empezar</span>
-    <h2>¿Quién va a registrar datos?</h2>
-    <p class="gate-copy">Elige o escribe tu nombre. Quedará marcado automáticamente en "Ingresado por" de cada registro que crees — así sabemos quién cargó qué, sin tener que elegirlo fila por fila.</p>
+    <span class="eyebrow gate-eyebrow">LabTrack</span>
+    <h2>Iniciar sesión</h2>
+    <p class="gate-copy">Ingresa con tu correo y contraseña para ver y registrar datos. Cada registro queda marcado automáticamente con tu correo en "Ingresado por".</p>
+    <p class="gate-error" id="gateError" hidden></p>
     <div class="gate-field">
-      <label for="gateSelect">Tu nombre</label>
-      <select id="gateSelect"></select>
+      <label for="gateEmail">Usuario o correo electrónico</label>
+      <input type="email" id="gateEmail" autocomplete="username" placeholder="nombre@empresa.com">
     </div>
-    <div class="gate-field" id="gateNewWrap" hidden>
-      <label for="gateNewInput">Nombre nuevo</label>
-      <input type="text" id="gateNewInput" placeholder="Ej: Jimena Rosell">
+    <div class="gate-field">
+      <label for="gatePassword">Contraseña</label>
+      <div class="pw-wrap">
+        <input type="password" id="gatePassword" autocomplete="current-password" placeholder="••••••••">
+        <button type="button" class="pw-toggle" id="gatePwToggle" title="Mostrar/ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1.8 10s3-6 8.2-6 8.2 6 8.2 6-3 6-8.2 6-8.2-6-8.2-6Z"/><circle cx="10" cy="10" r="2.4"/></svg>
+        </button>
+      </div>
     </div>
-    <button type="button" class="btn primary gate-submit" id="gateSubmit">Entrar</button>
-    <p class="gate-note">Esto es solo una etiqueta para saber quién cargó cada dato — no es una contraseña.</p>
+    <button type="button" class="btn primary gate-submit" id="gateSubmit">Iniciar sesión →</button>
+    <p class="gate-note">¿No tienes cuenta? Pídele a tu administrador que te cree un usuario en LabTrack.</p>
   </div>
 </div>
 
@@ -387,14 +358,14 @@
   <header class="topbar">
     <div class="brand">
       <span class="eyebrow">Control de calidad · laboratorio</span>
-      <h1>Bitácora QAQC — Envíos y resultados</h1>
+      <h1>LabTrack — Envíos y resultados</h1>
     </div>
     <div class="top-controls">
       <div class="segmented" id="areaToggle" role="tablist" aria-label="Área"></div>
       <div class="identity" id="identityBox">
         <span class="who-lbl">Ingresando como</span>
         <strong id="identityName">—</strong>
-        <button type="button" class="linklike" id="changeIdentityBtn">Cambiar</button>
+        <button type="button" class="linklike" id="logoutBtn">Cerrar sesión</button>
       </div>
       <button class="btn primary" id="exportBtn" type="button">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0-3.5-3.5M10 13l3.5-3.5"/><path d="M4 14v1.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>
@@ -407,9 +378,9 @@
         </summary>
         <div class="help-panel">
           <h3>¿Quién ve y quién edita?</h3>
-          <p><strong>Cualquier persona con este enlace</strong> puede ver y editar la información — no hay usuario ni contraseña real en esta versión.</p>
-          <p><strong>"Ingresado por"</strong> es solo una etiqueta para saber quién cargó cada fila, no una credencial de acceso.</p>
-          <p>Comparte el enlace únicamente con tu equipo. Si más adelante necesitas roles reales (algunas personas solo pueden ver, otras editar), se puede agregar inicio de sesión más adelante.</p>
+          <p>LabTrack ahora pide <strong>usuario y contraseña reales</strong>. Solo quienes tengan una cuenta creada pueden entrar, ver y editar la información.</p>
+          <p><strong>"Ingresado por"</strong> muestra el correo de la cuenta con la que se cargó o editó cada fila.</p>
+          <p>Para agregar a alguien de tu equipo, pídele a quien administra la base de datos (Supabase) que le cree una cuenta nueva.</p>
         </div>
       </details>
     </div>
@@ -423,7 +394,7 @@
   </div>
 
   <footer class="foot">
-    <span>Muestras 1.5 cm · Densidad · Análisis Químico · USC · Compósitos · DRX — Exploraciones y Mina</span>
+    <span>Muestras 1.5 cm · Densidad · Compósitos · Mineralogía · Resistencia — Exploraciones y Mina</span>
     <span id="syncNote">—</span>
   </footer>
 </div>
@@ -464,48 +435,45 @@
   ];
 
   var SECTIONS = [
-    {key:"muestras_prep",         group:"Muestras 1.5 cm",        title:"Preparación", sheet:"Muestras1.5cm-Prep",  fields:FIELDS_PREP,     status:{start:"fechaRecibida", end:"fechaFinal"}},
-    {key:"muestras_reanalisis",   group:"Muestras 1.5 cm",        title:"Reanálisis",  sheet:"Muestras1.5cm-Reanal",fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+    {key:"muestras_prep",              group:"Muestras 1.5 cm", title:"Preparación",             sheet:"Muestras1.5cm-Prep",   fields:FIELDS_PREP,   status:{start:"fechaRecibida", end:"fechaFinal"}},
+    {key:"quimico_primario",           group:"Muestras 1.5 cm", title:"A.Q. Primario",           sheet:"AnalisisQ-Primario",   fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"quimico_primario_reanalisis",group:"Muestras 1.5 cm", title:"A.Q. Primario Reanálisis",sheet:"AnalisisQ-PriReanal",  fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+    {key:"quimico_secundario",         group:"Muestras 1.5 cm", title:"A.Q. Secundario",         sheet:"AnalisisQ-Secund",     fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"quimico_secundario_reanalisis",group:"Muestras 1.5 cm", title:"A.Q. Secundario Reanálisis",sheet:"AnalisisQ-SecReanal",fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
 
-    {key:"densidad_primario",     group:"Densidad",                title:"Primario",     sheet:"Densidad-Primario",   fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"densidad_secundario",   group:"Densidad",                title:"Secundario",   sheet:"Densidad-Secundario", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"densidad_reanalisis",   group:"Densidad",                title:"Reanálisis",   sheet:"Densidad-Reanalisis", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+    {key:"densidad_primario",     group:"Densidad",    title:"Primario",     sheet:"Densidad-Primario",   fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"densidad_secundario",   group:"Densidad",    title:"Secundario",   sheet:"Densidad-Secundario", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"densidad_reanalisis",   group:"Densidad",    title:"Reanálisis",   sheet:"Densidad-Reanalisis", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
 
-    {key:"quimico_primario",      group:"Análisis Químico 1.5 cm", title:"Primario",     sheet:"AnalisisQ-Primario",  fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"quimico_secundario",    group:"Análisis Químico 1.5 cm", title:"Secundario",   sheet:"AnalisisQ-Secund",    fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"quimico_reanalisis",    group:"Análisis Químico 1.5 cm", title:"Reanálisis",   sheet:"AnalisisQ-Reanalisis",fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+    {key:"compositos_prep",       group:"Compósitos",  title:"Preparación",  sheet:"Compositos-Prep",     fields:FIELDS_BATCH4,   status:null},
+    {key:"compositos_primario",   group:"Compósitos",  title:"Primario",     sheet:"Compositos-Primario", fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"compositos_secundario", group:"Compósitos",  title:"Secundario",   sheet:"Compositos-Secund",   fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"compositos_reanalisis", group:"Compósitos",  title:"Reanálisis",   sheet:"Compositos-Reanalisis",fields:FIELDS_BATCH5,  status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
 
-    {key:"usc",                   group:"Resistencia",             title:"USC",          sheet:"USC",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"usc_reanalisis",        group:"Resistencia",             title:"Reanálisis",   sheet:"USC-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+    {key:"drx",                   group:"Mineralogía", title:"DRX",          sheet:"DRX",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"drx_reanalisis",        group:"Mineralogía", title:"Reanálisis",   sheet:"DRX-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
 
-    {key:"compositos_prep",       group:"Compósitos",              title:"Preparación",  sheet:"Compositos-Prep",     fields:FIELDS_BATCH4,   status:null},
-    {key:"compositos_primario",   group:"Compósitos",              title:"Primario",     sheet:"Compositos-Primario", fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"compositos_secundario", group:"Compósitos",              title:"Secundario",   sheet:"Compositos-Secund",   fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"compositos_reanalisis", group:"Compósitos",              title:"Reanálisis",   sheet:"Compositos-Reanalisis",fields:FIELDS_BATCH5,  status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
-
-    {key:"drx",                   group:"Mineralogía",             title:"DRX",          sheet:"DRX",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"drx_reanalisis",        group:"Mineralogía",             title:"Reanálisis",   sheet:"DRX-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true}
+    {key:"usc",                   group:"Resistencia", title:"USC",          sheet:"USC",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"usc_reanalisis",        group:"Resistencia", title:"Reanálisis",   sheet:"USC-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true}
   ];
 
   var GROUPS = [];
   SECTIONS.forEach(function(s){ if(GROUPS.indexOf(s.group)===-1) GROUPS.push(s.group); });
 
   var GROUP_ICONS = {
-    "Muestras 1.5 cm":            '<rect x="7.5" y="2.6" width="5" height="14.8" rx="1.4"/><line x1="7.5" y1="7.6" x2="12.5" y2="7.6"/><line x1="7.5" y1="12.4" x2="12.5" y2="12.4"/>',
-    "Densidad":                    '<line x1="10" y1="3" x2="10" y2="15.5"/><line x1="4.2" y1="6" x2="15.8" y2="6"/><circle cx="4.2" cy="10.2" r="2.1"/><circle cx="15.8" cy="10.2" r="2.1"/><line x1="7" y1="17" x2="13" y2="17"/>',
-    "Análisis Químico 1.5 cm":     '<path d="M8.3 3h3.4M8.7 3v4.3l-3.8 6.8a1.7 1.7 0 0 0 1.5 2.5h7.2a1.7 1.7 0 0 0 1.5-2.5l-3.8-6.8V3"/><line x1="7.2" y1="11.4" x2="12.8" y2="11.4"/>',
-    "Resistencia":                 '<rect x="6" y="7.8" width="8" height="6.4" rx="1"/><path d="M10 4.8v2.2M8.1 5.9l1.9-1.9 1.9 1.9M10 17.4v-2.2M8.1 16.3l1.9 1.9 1.9-1.9"/>',
-    "Compósitos":                  '<circle cx="7.6" cy="10" r="4.4"/><circle cx="12.4" cy="10" r="4.4"/>',
-    "Mineralogía":                 '<path d="M10 2.8 15.8 6.4v7.2L10 17.2l-5.8-3.6V6.4L10 2.8Z"/><circle cx="10" cy="10" r="1.3"/>'
+    "Muestras 1.5 cm": '<rect x="7.5" y="2.6" width="5" height="14.8" rx="1.4"/><line x1="7.5" y1="7.6" x2="12.5" y2="7.6"/><line x1="7.5" y1="12.4" x2="12.5" y2="12.4"/>',
+    "Densidad":         '<line x1="10" y1="3" x2="10" y2="15.5"/><line x1="4.2" y1="6" x2="15.8" y2="6"/><circle cx="4.2" cy="10.2" r="2.1"/><circle cx="15.8" cy="10.2" r="2.1"/><line x1="7" y1="17" x2="13" y2="17"/>',
+    "Compósitos":       '<circle cx="7.6" cy="10" r="4.4"/><circle cx="12.4" cy="10" r="4.4"/>',
+    "Mineralogía":      '<path d="M10 2.8 15.8 6.4v7.2L10 17.2l-5.8-3.6V6.4L10 2.8Z"/><circle cx="10" cy="10" r="1.3"/>',
+    "Resistencia":      '<rect x="6" y="7.8" width="8" height="6.4" rx="1"/><path d="M10 4.8v2.2M8.1 5.9l1.9-1.9 1.9 1.9M10 17.4v-2.2M8.1 16.3l1.9 1.9 1.9-1.9"/>'
   };
   var REANALISIS_ICON = '<path d="M15.6 8.4A5.6 5.6 0 1 0 16 11"/><path d="M15.6 4.2v4.2h-4.2"/>';
   var GROUP_SLUGS = {
-    "Muestras 1.5 cm":            "muestras",
-    "Densidad":                    "densidad",
-    "Análisis Químico 1.5 cm":     "quimico",
-    "Resistencia":                 "resistencia",
-    "Compósitos":                  "compositos",
-    "Mineralogía":                 "mineralogia"
+    "Muestras 1.5 cm": "muestras",
+    "Densidad":         "densidad",
+    "Compósitos":       "compositos",
+    "Mineralogía":      "mineralogia",
+    "Resistencia":      "resistencia"
   };
   function groupIconEl(g, cls){
     return el("svg",{class:cls||"g-icon",viewBox:"0 0 20 20",fill:"none",stroke:"currentColor","stroke-width":"1.5","stroke-linecap":"round","stroke-linejoin":"round",html:GROUP_ICONS[g]||""});
@@ -609,77 +577,90 @@
     return {days:d, ongoing:true};
   }
 
-  /* ===================== identidad (etiqueta, no autenticación) =====================
-     No hay contraseña real. Cualquier persona con el enlace de esta página
-     puede ver y editar. Esta pantalla de "Identifícate" solo cumple lo que
-     sí importa aquí: cada registro nuevo queda marcado con el nombre de
-     quien lo cargó, sin pedirlo fila por fila. */
-
-  var DEFAULT_USERS = ["Sin asignar"];
-  var usuariosList = DEFAULT_USERS.slice();
-
-  function initIdentity(){
-    var saved = null;
-    try{ saved = localStorage.getItem("qaqc_user"); }catch(e){}
-    if(saved) state.user = saved;
-    renderIdentityBox();
-    if(!saved) openGate(); else refreshUsuarios();
-  }
-
-  function refreshUsuarios(){
-    return sb.from("qaqc_usuarios").select("nombre").order("nombre").then(function(res){
-      if(!res.error && res.data && res.data.length){
-        usuariosList = res.data.map(function(r){ return r.nombre; });
-      }
-    }).catch(function(){ /* keep whatever list we already have */ });
-  }
+  /* ===================== identidad (autenticación real con Supabase Auth) =====================
+     Ahora sí hay usuario y contraseña reales: nadie ve ni edita nada sin
+     iniciar sesión con una cuenta creada previamente en Supabase
+     (Panel de Supabase → Authentication → Users → "Add user").
+     El correo de la cuenta con la que se entra queda guardado como
+     "Ingresado por" en cada registro nuevo o editado. */
 
   function renderIdentityBox(){
     var nameEl = $("#identityName");
-    if(nameEl) nameEl.textContent = state.user || "Sin identificar";
+    if(nameEl) nameEl.textContent = state.user || "—";
   }
 
-  function populateGateSelect(){
-    var sel = $("#gateSelect");
-    sel.innerHTML = "";
-    usuariosList.forEach(function(n){ sel.appendChild(el("option",{value:n},[n])); });
-    sel.appendChild(el("option",{value:"__add__"},["+ Agregar nombre nuevo…"]));
-    var current = (state.user && usuariosList.indexOf(state.user)!==-1) ? state.user : usuariosList[0];
-    sel.value = current;
-    $("#gateNewWrap").hidden = (sel.value !== "__add__");
+  function showGateError(msg){
+    var box = $("#gateError");
+    if(!msg){ box.hidden = true; box.textContent = ""; return; }
+    box.hidden = false;
+    box.textContent = msg;
   }
 
   function openGate(){
-    refreshUsuarios().then(populateGateSelect).catch(populateGateSelect);
-    populateGateSelect();
-    $("#gateNewInput").value = "";
+    showGateError("");
+    $("#gatePassword").value = "";
     $("#gate").hidden = false;
   }
   function closeGate(){ $("#gate").hidden = true; }
 
-  function submitGate(){
-    var sel = $("#gateSelect");
-    var isNew = sel.value === "__add__";
-    var name = isNew ? $("#gateNewInput").value.trim() : sel.value;
-    if(!name){ $("#gateNewInput").focus(); return; }
+  function setGateBusy(on){
+    var btn = $("#gateSubmit");
+    btn.disabled = on;
+    btn.textContent = on ? "Ingresando…" : "Iniciar sesión →";
+  }
 
-    function finish(){
-      state.user = name;
-      try{ localStorage.setItem("qaqc_user", name); }catch(e){}
+  function submitGate(){
+    var email = $("#gateEmail").value.trim();
+    var password = $("#gatePassword").value;
+    if(!email){ $("#gateEmail").focus(); return; }
+    if(!password){ $("#gatePassword").focus(); return; }
+    showGateError("");
+    setGateBusy(true);
+    sb.auth.signInWithPassword({email:email, password:password}).then(function(res){
+      setGateBusy(false);
+      if(res.error){
+        showGateError("No se pudo iniciar sesión: correo o contraseña incorrectos.");
+        return;
+      }
+      onLoggedIn(res.data.session);
+    }).catch(function(err){
+      setGateBusy(false);
+      showGateError("No se pudo iniciar sesión (" + (err&&err.message||"error") + ").");
+    });
+  }
+
+  function logout(){
+    sb.auth.signOut().then(function(){
+      state.user = "";
       renderIdentityBox();
-      closeGate();
+      $("#content").innerHTML = "";
+      $("#sidebar").innerHTML = "";
+      openGate();
+    });
+  }
+
+  var appStarted = false;
+
+  function onLoggedIn(session){
+    state.user = session && session.user ? session.user.email : "";
+    renderIdentityBox();
+    closeGate();
+    if(!appStarted){
+      appStarted = true;
+      startApp();
     }
-    if(isNew){
-      sb.from("qaqc_usuarios").upsert({nombre:name}).then(function(res){
-        if(res.error) throw res.error;
-        finish();
-      }).catch(function(err){
-        alert("No se pudo guardar el nombre en la lista compartida (" + (err&&err.message||"error") + "), pero puedes seguir usándolo en esta sesión.");
-        finish();
-      });
-    } else {
-      finish();
-    }
+  }
+
+  function initIdentity(){
+    sb.auth.getSession().then(function(res){
+      var session = res.data && res.data.session;
+      if(session){ onLoggedIn(session); }
+      else { openGate(); }
+    });
+    sb.auth.onAuthStateChange(function(event, session){
+      if(event === "SIGNED_IN" && session){ onLoggedIn(session); }
+      if(event === "SIGNED_OUT"){ state.user = ""; renderIdentityBox(); openGate(); }
+    });
   }
 
   /* ===================== sidebar ===================== */
@@ -999,19 +980,10 @@
 
   /* ===================== boot ===================== */
 
-  function boot(){
+  function startApp(){
     renderAreaToggle();
     renderSidebar();
     renderContent();
-    initIdentity();
-    $("#changeIdentityBtn").addEventListener("click", openGate);
-    $("#gateSelect").addEventListener("change", function(){
-      $("#gateNewWrap").hidden = (this.value !== "__add__");
-      if(this.value === "__add__") $("#gateNewInput").focus();
-    });
-    $("#gateSubmit").addEventListener("click", submitGate);
-    $("#gateNewInput").addEventListener("keydown", function(e){ if(e.key==="Enter") submitGate(); });
-    $("#exportBtn").addEventListener("click", exportExcel);
 
     fetchRows("exploraciones", "muestras_prep").then(function(){
       renderDbBanner(true);
@@ -1020,6 +992,20 @@
     });
 
     setupRealtime();
+  }
+
+  function boot(){
+    $("#logoutBtn").addEventListener("click", logout);
+    $("#gateSubmit").addEventListener("click", submitGate);
+    $("#gateEmail").addEventListener("keydown", function(e){ if(e.key==="Enter") $("#gatePassword").focus(); });
+    $("#gatePassword").addEventListener("keydown", function(e){ if(e.key==="Enter") submitGate(); });
+    $("#gatePwToggle").addEventListener("click", function(){
+      var pw = $("#gatePassword");
+      pw.type = (pw.type === "password") ? "text" : "password";
+    });
+    $("#exportBtn").addEventListener("click", exportExcel);
+
+    initIdentity();
   }
 
   boot();
