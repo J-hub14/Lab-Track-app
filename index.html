@@ -540,8 +540,9 @@
      el área activa (Exploraciones o Mina), para que nadie escriba un sondaje que
      no existe y para que los de un área nunca aparezcan como opción en la otra.
      Mina: MR26001-11 hasta MR26057-11 (correlativo), EXCEPTO MR26019-11 y
-     MR26036-11, que pertenecen a Exploraciones. Exploraciones: ED26001 y
-     ED26002 (cada uno de -02 a -07) más esos dos MR26019-11 y MR26036-11.
+     MR26036-11, que pertenecen a Exploraciones. Exploraciones: ED26001-02,
+     ED26002-02, ED26003-02 ... hasta ED26007-02 (el número de sondaje sube,
+     el sufijo siempre es -02), más esos dos MR26019-11 y MR26036-11.
      Si esta lista no es exactamente la correcta, dile a Claude los códigos
      reales y se ajusta aquí mismo. */
   function padNum(n, width){ var s = String(n); while(s.length < width) s = "0" + s; return s; }
@@ -553,9 +554,7 @@
       if(MINA_EXCLUIR.indexOf(code) === -1) mina.push(code);
     }
     var exploraciones = [];
-    [1,2].forEach(function(hole){
-      for(var s=2;s<=7;s++) exploraciones.push("ED26" + padNum(hole,3) + "-" + padNum(s,2));
-    });
+    for(var h=1;h<=7;h++) exploraciones.push("ED26" + padNum(h,3) + "-02");
     exploraciones = exploraciones.concat(MINA_EXCLUIR);
     return { mina: mina, exploraciones: exploraciones };
   })();
