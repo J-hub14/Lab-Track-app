@@ -234,6 +234,7 @@
   .add-row .f{display:flex;flex-direction:column;gap:4px;}
   .add-row .f label{font-size:11px;color:var(--ink-dim);}
   .add-row input{min-width:120px;}
+  .add-row input[readonly]{background:var(--surface-2);color:var(--ink-dim);cursor:default;}
 
   .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
   table.data{border-collapse:collapse;width:100%;min-width:640px;}
@@ -441,6 +442,7 @@
     batch:        {key:"batch",        label:"Batch",              type:"text"},
     sondaje:      {key:"sondaje",      label:"Sondaje",            type:"text"},
     dispatch:     {key:"dispatch",     label:"Dispatch",           type:"text"},
+    labJob:       {key:"labJob",       label:"LabJob",             type:"text"},
     numMuestras:  {key:"numMuestras",  label:"N° de Muestras",     type:"text"},
     numEnvio:     {key:"numEnvio",     label:"N° de Envío",        type:"text"},
     fechaRecibida:{key:"fechaRecibida",label:"Fecha Recibida",     type:"date"},
@@ -449,10 +451,10 @@
     fechaResult:  {key:"fechaResult",  label:"Fecha de Resultados",type:"date"}
   };
 
-  var FIELDS_PREP    = [F.batch, F.sondaje, F.dispatch, F.numMuestras, F.numEnvio, F.fechaRecibida, F.fechaFinal];
-  var FIELDS_DENSIDAD= [F.sondaje, F.dispatch, F.numMuestras, F.fechaSolic, F.fechaResult];
-  var FIELDS_BATCH5  = [F.batch, F.dispatch, F.numMuestras, F.fechaSolic, F.fechaResult];
-  var FIELDS_BATCH4  = [F.batch, F.dispatch, F.numMuestras, F.fechaSolic];
+  var FIELDS_PREP    = [F.batch, F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.numEnvio, F.fechaRecibida, F.fechaFinal];
+  var FIELDS_DENSIDAD= [F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
+  var FIELDS_BATCH5  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
+  var FIELDS_BATCH4  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic];
 
   var AREAS = [
     {key:"exploraciones", label:"Exploraciones", sheet:"EXP"},
@@ -509,6 +511,73 @@
   }
 
   function sectionByKey(k){ for(var i=0;i<SECTIONS.length;i++) if(SECTIONS[i].key===k) return SECTIONS[i]; return null; }
+
+  /* ===================== códigos de Dispatch autonuméricos =====================
+     Para las secciones listadas aquí, el campo Dispatch no se escribe a mano:
+     se arma solo como PREFIJO + número correlativo de 4 dígitos (0001, 0002...),
+     buscando el número más alto ya usado en esa sección (en Exploraciones y Mina
+     juntas) y sumando 1. Las secciones que no aparecen en este mapa (Densidad
+     Reanálisis, Compósitos Preparación/Reanálisis, DRX Reanálisis, USC Reanálisis)
+     todavía no tienen un prefijo definido, así que su Dispatch se sigue
+     escribiendo a mano hasta que Jimena confirme esos códigos. */
+  var DISPATCH_PREFIX = {
+    muestras_prep:                 "GP26-",
+    quimico_primario:              "GQ26-01-",
+    quimico_secundario:            "GQ26-06-",
+    quimico_primario_reanalisis:   "GQ26-05-",
+    quimico_secundario_reanalisis: "GQ26-02-",
+    densidad_primario:             "GE26-01-",
+    densidad_secundario:           "GE26-02-",
+    usc:                           "GE26-03-",
+    compositos_primario:           "GQ26-03-",
+    compositos_secundario:         "GQ26-04-",
+    drx:                           "GX26-01-"
+  };
+  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+  /* ===================== lista cerrada de sondajes por área =====================
+     El campo "Sondaje" ya no se escribe a mano: se elige de una lista fija según
+     el área activa (Exploraciones o Mina), para que nadie escriba un sondaje que
+     no existe y para que los de un área nunca aparezcan como opción en la otra.
+     Mina: MR26001-11 hasta MR26057-11 (correlativo), EXCEPTO MR26019-11 y
+     MR26036-11, que pertenecen a Exploraciones. Exploraciones: ED26001 y
+     ED26002 (cada uno de -02 a -07) más esos dos MR26019-11 y MR26036-11.
+     Si esta lista no es exactamente la correcta, dile a Claude los códigos
+     reales y se ajusta aquí mismo. */
+  function padNum(n, width){ var s = String(n); while(s.length < width) s = "0" + s; return s; }
+  var SONDAJES_BY_AREA = (function(){
+    var MINA_EXCLUIR = ["MR26019-11", "MR26036-11"];
+    var mina = [];
+    for(var i=1;i<=57;i++){
+      var code = "MR26" + padNum(i,3) + "-11";
+      if(MINA_EXCLUIR.indexOf(code) === -1) mina.push(code);
+    }
+    var exploraciones = [];
+    [1,2].forEach(function(hole){
+      for(var s=2;s<=7;s++) exploraciones.push("ED26" + padNum(hole,3) + "-" + padNum(s,2));
+    });
+    exploraciones = exploraciones.concat(MINA_EXCLUIR);
+    return { mina: mina, exploraciones: exploraciones };
+  })();
+  function nextDispatchCode(sectionKey){
+    var prefix = DISPATCH_PREFIX[sectionKey];
+    if(!prefix) return Promise.resolve(null);
+    return sb.from("qaqc_registros").select("payload").eq("section_key", sectionKey)
+      .then(function(res){
+        if(res.error) throw res.error;
+        var maxN = 0;
+        var re = new RegExp("^" + escapeRegExp(prefix) + "(\\d+)$");
+        (res.data||[]).forEach(function(row){
+          var v = row.payload && row.payload.dispatch;
+          if(!v) return;
+          var m = re.exec(String(v).trim());
+          if(m){ var n = parseInt(m[1],10); if(n > maxN) maxN = n; }
+        });
+        var digits = String(maxN + 1);
+        while(digits.length < 4) digits = "0" + digits;
+        return prefix + digits;
+      });
+  }
 
   /* ===================== state ===================== */
 
@@ -584,7 +653,7 @@
     var endVal = rec[cfg.end];
     if(endVal) return {label:"Completado", cls:"good"};
     var startVal = rec[cfg.start];
-    if(startVal && daysSince(startVal) > 15) return {label:"Atrasado", cls:"bad"};
+    if(startVal && daysSince(startVal) >= 8) return {label:"Atrasado", cls:"bad"};
     return {label:"Pendiente", cls:"warn"};
   }
 
@@ -774,7 +843,7 @@
     var panel = el("div", {class:"panel"});
     panel.appendChild(el("div", {class:"panel-head"}, [
       el("h2", {}, ["Resumen — " + AREAS.filter(function(a){return a.key===state.area;})[0].label]),
-      el("p", {}, ["Total de registros por etapa, con conteo de completados, pendientes y atrasados (más de 15 días sin resultado)."])
+      el("p", {}, ["Total de registros por etapa, con conteo de completados, pendientes y atrasados (8 días o más sin resultado)."])
     ]));
     var body = el("div", {class:"panel-body"});
     var grid = el("div", {class:"section-grid"}, [el("div",{class:"empty-state"},["Cargando…"])]);
@@ -813,7 +882,7 @@
       stats.appendChild(el("div",{class:"stat-tile"},[el("div",{class:"n"},[String(totalAll)]), el("div",{class:"lbl"},["Registros totales"])]));
       stats.appendChild(el("div",{class:"stat-tile good"},[el("div",{class:"n"},[String(goodAll)]), el("div",{class:"lbl"},["Completados"])]));
       stats.appendChild(el("div",{class:"stat-tile warn"},[el("div",{class:"n"},[String(warnAll)]), el("div",{class:"lbl"},["Pendientes"])]));
-      stats.appendChild(el("div",{class:"stat-tile bad"},[el("div",{class:"n"},[String(badAll)]), el("div",{class:"lbl"},["Atrasados (>15 días)"])]));
+      stats.appendChild(el("div",{class:"stat-tile bad"},[el("div",{class:"n"},[String(badAll)]), el("div",{class:"lbl"},["Atrasados (≥8 días)"])]));
       body.insertBefore(stats, grid);
     }).catch(function(){
       grid.innerHTML = "";
@@ -840,11 +909,34 @@
     // add-row form
     var addRow = el("div", {class:"add-row"});
     var inputs = {};
+    var autoDispatchKey = DISPATCH_PREFIX[section.key] ? "dispatch" : null;
+    function fillAutoDispatch(){
+      if(!autoDispatchKey) return;
+      var input = inputs[autoDispatchKey];
+      input.value = "…";
+      nextDispatchCode(section.key).then(function(code){
+        if(code) input.value = code;
+      }).catch(function(){ input.value = ""; input.readOnly = false; });
+    }
     section.fields.forEach(function(f){
-      var input = el("input", {type:f.type, id:"new_"+section.key+"_"+f.key, placeholder:f.type==="text"?f.label:""});
+      var isAuto = (f.key === autoDispatchKey);
+      var input;
+      if(f.key === "sondaje"){
+        input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
+        (SONDAJES_BY_AREA[myArea]||[]).forEach(function(code){
+          input.appendChild(el("option",{value:code},[code]));
+        });
+      } else {
+        input = el("input", {type:f.type, id:"new_"+section.key+"_"+f.key, placeholder:f.type==="text"?f.label:""});
+      }
+      if(isAuto){
+        input.readOnly = true;
+        input.title = "Se genera solo, con el siguiente número disponible";
+      }
       inputs[f.key] = input;
       addRow.appendChild(el("div", {class:"f"}, [el("label",{for:input.id},[f.label]), input]));
     });
+    fillAutoDispatch();
     var addBtn = el("button", {class:"btn primary", type:"button", onclick:function(){
       var data = {};
       var hasValue = false;
@@ -852,7 +944,8 @@
       if(!hasValue){ inputs[section.fields[0].key].focus(); return; }
       addBtn.disabled = true;
       insertRow(myArea, mySectionKey, data, state.user).then(function(){
-        section.fields.forEach(function(f){ inputs[f.key].value=""; });
+        section.fields.forEach(function(f){ if(f.key !== autoDispatchKey) inputs[f.key].value=""; });
+        fillAutoDispatch();
         inputs[section.fields[0].key].focus();
         if(state.currentReload) state.currentReload();
       }).catch(function(err){
@@ -911,7 +1004,21 @@
       var data = row.payload || {};
       var tr = el("tr");
       section.fields.forEach(function(f){
-        var input = el("input", {type:f.type, value:data[f.key]||""});
+        var input;
+        if(f.key === "sondaje"){
+          var curVal = data[f.key]||"";
+          var opts = SONDAJES_BY_AREA[state.area]||[];
+          input = el("select", {}, [el("option",{value:""},["Selecciona…"])]);
+          if(curVal && opts.indexOf(curVal) === -1){
+            input.appendChild(el("option",{value:curVal},[curVal]));
+          }
+          opts.forEach(function(code){
+            input.appendChild(el("option",{value:code},[code]));
+          });
+          input.value = curVal;
+        } else {
+          input = el("input", {type:f.type, value:data[f.key]||""});
+        }
         input.addEventListener("change", function(){
           updateCell(row, section, f.key, input.value);
         });
