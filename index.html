@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitácora QAQC</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F5F3EE;
+    --surface:#FFFFFF;
+    --surface-2:#EEE9DD;
+    --border:#DDD5C2;
+    --ink:#23221D;
+    --ink-dim:#6E6A5D;
+    --ink-faint:#9A947F;
+    --accent:#B5622A;
+    --accent-ink:#FFFFFF;
+    --accent-soft:#F1DCC9;
+    --good:#2C7A73;
+    --good-soft:#DCEEEA;
+    --warn:#B4791C;
+    --warn-soft:#F3E4C6;
+    --bad:#B23B3B;
+    --bad-soft:#F5DEDA;
+    --radius:6px;
+    --shadow:0 1px 2px rgba(35,34,29,.06),0 4px 14px rgba(35,34,29,.05);
+    --grp-densidad-bg:#DCE6EE;     --grp-densidad-fg:#2F6690;
+    --grp-quimico-bg:#E3EAD7;      --grp-quimico-fg:#5B7A34;
+    --grp-resistencia-bg:#EEE1D2;  --grp-resistencia-fg:#8A5A28;
+    --grp-compositos-bg:#ECDCE7;   --grp-compositos-fg:#8A4A78;
+    --grp-mineralogia-bg:#DEDCF1;  --grp-mineralogia-fg:#5850A6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1B1A17;
+      --surface:#232220;
+      --surface-2:#2B2925;
+      --border:#3C3833;
+      --ink:#ECE7DC;
+      --ink-dim:#AEA895;
+      --ink-faint:#7C7767;
+      --accent:#E08A4C;
+      --accent-ink:#221605;
+      --accent-soft:#4A331F;
+      --good:#4FB3A6;
+      --good-soft:#1E3733;
+      --warn:#E0AA4C;
+      --warn-soft:#3C3013;
+      --bad:#E27A7A;
+      --bad-soft:#3B2222;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+      --grp-densidad-bg:#1E313E;     --grp-densidad-fg:#8FC0E3;
+      --grp-quimico-bg:#2B3420;      --grp-quimico-fg:#B4D488;
+      --grp-resistencia-bg:#3B2C1A;  --grp-resistencia-fg:#E0AD73;
+      --grp-compositos-bg:#3A2735;   --grp-compositos-fg:#E0A3CC;
+      --grp-mineralogia-bg:#282544;  --grp-mineralogia-fg:#B3ABEB;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1B1A17;
+    --surface:#232220;
+    --surface-2:#2B2925;
+    --border:#3C3833;
+    --ink:#ECE7DC;
+    --ink-dim:#AEA895;
+    --ink-faint:#7C7767;
+    --accent:#E08A4C;
+    --accent-ink:#221605;
+    --accent-soft:#4A331F;
+    --good:#4FB3A6;
+    --good-soft:#1E3733;
+    --warn:#E0AA4C;
+    --warn-soft:#3C3013;
+    --bad:#E27A7A;
+    --bad-soft:#3B2222;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    --grp-densidad-bg:#1E313E;     --grp-densidad-fg:#8FC0E3;
+    --grp-quimico-bg:#2B3420;      --grp-quimico-fg:#B4D488;
+    --grp-resistencia-bg:#3B2C1A;  --grp-resistencia-fg:#E0AD73;
+    --grp-compositos-bg:#3A2735;   --grp-compositos-fg:#E0A3CC;
+    --grp-mineralogia-bg:#282544;  --grp-mineralogia-fg:#B3ABEB;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+    font-size:14px;
+    line-height:1.45;
+  }
+  ::selection{background:var(--accent-soft);}
+  a{color:var(--accent);}
+  button{font-family:inherit;}
+  input,select,button{font-size:14px;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;}
+  .eyebrow{
+    font-family:"IBM Plex Sans Condensed",sans-serif;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.09em;
+    font-size:11px;
+    color:var(--ink-dim);
+  }
+
+  .shell{max-width:1320px;margin:0 auto;padding:20px 20px 60px;}
+
+  header.topbar{
+    display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end;
+    justify-content:space-between;
+    padding-bottom:16px;margin-bottom:16px;
+    border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .brand h1{
+    margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em;
+    text-wrap:balance;
+  }
+  .brand .eyebrow{color:var(--accent);}
+
+  .top-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+
+  .segmented{
+    display:inline-flex;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:999px;padding:3px;gap:2px;
+  }
+  .segmented button{
+    border:none;background:transparent;color:var(--ink-dim);
+    padding:7px 16px;border-radius:999px;cursor:pointer;font-weight:600;font-size:13px;
+    transition:background .15s,color .15s;
+  }
+  .segmented button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);}
+
+  .field-inline{display:flex;align-items:center;gap:6px;}
+  .field-inline label{font-size:12px;color:var(--ink-dim);white-space:nowrap;}
+  select, .input{
+    background:var(--surface);color:var(--ink);
+    border:1px solid var(--border);border-radius:var(--radius);
+    padding:7px 10px;
+  }
+
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;
+    border:1px solid var(--border);background:var(--surface);color:var(--ink);
+    padding:8px 14px;border-radius:var(--radius);cursor:pointer;font-weight:600;font-size:13px;
+    transition:border-color .15s,background .15s;
+  }
+  .btn:hover{border-color:var(--ink-faint);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+  .btn.primary:hover{filter:brightness(1.05);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn svg{width:15px;height:15px;flex:none;}
+
+  details.help{position:relative;}
+  details.help summary{
+    list-style:none;cursor:pointer;color:var(--ink-dim);font-size:12px;
+    display:flex;align-items:center;gap:5px;padding:8px 4px;
+  }
+  details.help summary::-webkit-details-marker{display:none;}
+  details.help[open] summary{color:var(--ink);}
+  .help-panel{
+    position:absolute;right:0;top:100%;z-index:20;width:min(360px,86vw);
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:14px 16px;margin-top:6px;
+  }
+  .help-panel h3{margin:0 0 8px;font-size:13px;}
+  .help-panel p{margin:0 0 8px;font-size:12.5px;color:var(--ink-dim);}
+  .help-panel p:last-child{margin-bottom:0;}
+  .help-panel strong{color:var(--ink);}
+
+  .layout{display:flex;gap:22px;align-items:flex-start;}
+  nav.sidebar{
+    flex:0 0 240px;position:sticky;top:20px;
+    display:flex;flex-direction:column;gap:14px;
+    max-height:calc(100vh - 40px);overflow-y:auto;
+  }
+  .nav-group{display:flex;flex-direction:column;gap:2px;}
+  .nav-group-head{padding:6px 4px 6px;}
+  .g-icon{width:13px;height:13px;flex:none;}
+  .redo-icon{width:13px;height:13px;flex:none;color:var(--accent);}
+  .panel-head h2{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+
+  .grp-chip{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 10px 4px 8px;border-radius:999px;
+    font-family:"IBM Plex Sans Condensed",sans-serif;font-weight:600;
+    text-transform:uppercase;letter-spacing:.05em;font-size:11px;line-height:1.3;
+  }
+  .panel-head .grp-chip{font-size:12px;padding:5px 12px 5px 9px;}
+  .grp-muestras{background:var(--accent-soft);color:var(--accent);}
+  .grp-densidad{background:var(--grp-densidad-bg);color:var(--grp-densidad-fg);}
+  .grp-quimico{background:var(--grp-quimico-bg);color:var(--grp-quimico-fg);}
+  .grp-resistencia{background:var(--grp-resistencia-bg);color:var(--grp-resistencia-fg);}
+  .grp-compositos{background:var(--grp-compositos-bg);color:var(--grp-compositos-fg);}
+  .grp-mineralogia{background:var(--grp-mineralogia-bg);color:var(--grp-mineralogia-fg);}
+  .nav-item{
+    display:flex;align-items:center;gap:8px;
+    padding:8px 10px;border-radius:var(--radius);cursor:pointer;
+    color:var(--ink-dim);font-size:13px;font-weight:500;border:1px solid transparent;
+  }
+  .nav-item:hover{background:var(--surface-2);color:var(--ink);}
+  .nav-item.active{background:var(--surface);border-color:var(--border);color:var(--ink);box-shadow:var(--shadow);}
+  .nav-item .count{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);
+    background:var(--surface-2);border-radius:999px;padding:1px 7px;min-width:20px;text-align:center;
+  }
+  .nav-item.active .count{background:var(--accent-soft);color:var(--accent);}
+  .nav-resumen{
+    display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:var(--radius);
+    cursor:pointer;font-weight:600;font-size:13px;border:1px solid var(--border);background:var(--surface);
+  }
+  .nav-resumen.active{border-color:var(--accent);color:var(--accent);}
+
+  main.content{flex:1;min-width:0;}
+
+  .panel{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .panel + .panel{margin-top:16px;}
+  .panel-head{padding:16px 18px 12px;border-bottom:1px solid var(--border);}
+  .panel-head h2{margin:0 0 3px;font-size:17px;}
+  .panel-head p{margin:0;font-size:12.5px;color:var(--ink-dim);}
+  .panel-body{padding:16px 18px 18px;}
+
+  .banner{
+    padding:10px 14px;border-radius:var(--radius);font-size:13px;margin-bottom:14px;
+    border:1px solid var(--border);background:var(--surface-2);color:var(--ink-dim);
+  }
+  .banner.bad{background:var(--bad-soft);border-color:var(--bad);color:var(--bad);}
+
+  .stat-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:18px;
+  }
+  .stat-tile{
+    border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;background:var(--surface);
+  }
+  .stat-tile .n{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:600;line-height:1;}
+  .stat-tile .lbl{font-size:11.5px;color:var(--ink-dim);margin-top:4px;}
+  .stat-tile.good .n{color:var(--good);}
+  .stat-tile.warn .n{color:var(--warn);}
+  .stat-tile.bad .n{color:var(--bad);}
+
+  .section-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;
+  }
+  .section-card{
+    text-align:left;border:1px solid var(--border);border-radius:var(--radius);
+    padding:12px 14px;background:var(--surface);cursor:pointer;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .section-card:hover{border-color:var(--accent);}
+  .section-card .grp-chip{align-self:flex-start;}
+  .section-card .ttl{font-weight:600;font-size:14px;}
+  .section-card .breakdown{display:flex;gap:10px;font-size:11.5px;font-family:"IBM Plex Mono",monospace;}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;}
+  .dot.good{background:var(--good);} .dot.warn{background:var(--warn);} .dot.bad{background:var(--bad);}
+
+  .add-row{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:end;
+    padding:14px;background:var(--surface-2);border:1px dashed var(--border);border-radius:var(--radius);
+    margin-bottom:16px;
+  }
+  .add-row .f{display:flex;flex-direction:column;gap:4px;}
+  .add-row .f label{font-size:11px;color:var(--ink-dim);}
+  .add-row input{min-width:120px;}
+
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
+  table.data{border-collapse:collapse;width:100%;min-width:640px;}
+  table.data th{
+    position:sticky;top:0;background:var(--surface-2);text-align:left;
+    font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim);
+    padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;
+  }
+  table.data td{
+    padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:middle;
+  }
+  table.data tbody tr:hover{background:var(--surface-2);}
+  table.data tbody tr:last-child td{border-bottom:none;}
+  table.data input{
+    border:1px solid transparent;background:transparent;color:var(--ink);
+    border-radius:4px;padding:5px 6px;width:100%;min-width:100px;
+  }
+  table.data input:hover{border-color:var(--border);}
+  table.data input:focus{border-color:var(--accent);background:var(--surface);}
+  table.data input[type="date"]{min-width:132px;}
+
+  .badge{
+    display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
+    font-size:11.5px;font-weight:600;white-space:nowrap;
+  }
+  .badge.good{background:var(--good-soft);color:var(--good);}
+  .badge.warn{background:var(--warn-soft);color:var(--warn);}
+  .badge.bad{background:var(--bad-soft);color:var(--bad);}
+
+  .icon-btn{
+    border:none;background:transparent;color:var(--ink-faint);cursor:pointer;
+    padding:5px;border-radius:4px;display:inline-flex;
+  }
+  .icon-btn:hover{background:var(--bad-soft);color:var(--bad);}
+  .icon-btn svg{width:15px;height:15px;}
+
+  .empty-state{
+    padding:34px 20px;text-align:center;color:var(--ink-dim);
+  }
+  .empty-state .big{font-size:28px;margin-bottom:6px;}
+
+  .who{font-size:11.5px;color:var(--ink-faint);}
+  .days{font-size:13px;font-weight:600;color:var(--ink);}
+  .days.ongoing{font-weight:500;color:var(--ink-dim);}
+
+  footer.foot{
+    margin-top:26px;padding-top:14px;border-top:1px solid var(--border);
+    font-size:11.5px;color:var(--ink-faint);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  }
+
+  @media (max-width:820px){
+    .layout{flex-direction:column;}
+    nav.sidebar{
+      position:static;flex:none;width:100%;max-height:none;
+      flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:8px;padding-bottom:6px;
+    }
+    .nav-group{flex-direction:row;flex:none;}
+    .nav-group-head{display:none;}
+    .nav-resumen{flex:none;}
+  }
+  @media (max-width:520px){
+    .shell{padding:14px 14px 40px;}
+    header.topbar{align-items:flex-start;}
+  }
+
+  .identity{
+    display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-dim);
+    padding:7px 4px;
+  }
+  .identity strong{color:var(--ink);font-weight:600;}
+  .linklike{
+    border:none;background:none;color:var(--accent);cursor:pointer;font-weight:600;
+    font-size:12.5px;padding:2px 4px;text-decoration:underline;text-underline-offset:2px;
+  }
+
+  .gate-overlay{
+    position:fixed;inset:0;z-index:100;background:rgba(20,18,14,.55);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .gate-overlay[hidden]{display:none;}
+  .gate-card{
+    width:min(420px,100%);background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 26px 22px;
+    display:flex;flex-direction:column;gap:12px;
+  }
+  .gate-eyebrow{color:var(--accent);}
+  .gate-card h2{margin:0;font-size:19px;text-wrap:balance;}
+  .gate-copy{margin:0;font-size:13px;color:var(--ink-dim);}
+  .gate-field{display:flex;flex-direction:column;gap:5px;}
+  .gate-field label{font-size:11.5px;color:var(--ink-dim);}
+  .gate-field select, .gate-field input{width:100%;}
+  .gate-submit{justify-content:center;margin-top:4px;}
+  .gate-note{margin:0;font-size:11px;color:var(--ink-faint);}
+</style>
+</head>
+<body>
+
+<div class="gate-overlay" id="gate" hidden>
+  <div class="gate-card">
+    <span class="eyebrow gate-eyebrow">Antes de empezar</span>
+    <h2>¿Quién va a registrar datos?</h2>
+    <p class="gate-copy">Elige o escribe tu nombre. Quedará marcado automáticamente en "Ingresado por" de cada registro que crees — así sabemos quién cargó qué, sin tener que elegirlo fila por fila.</p>
+    <div class="gate-field">
+      <label for="gateSelect">Tu nombre</label>
+      <select id="gateSelect"></select>
+    </div>
+    <div class="gate-field" id="gateNewWrap" hidden>
+      <label for="gateNewInput">Nombre nuevo</label>
+      <input type="text" id="gateNewInput" placeholder="Ej: Jimena Rosell">
+    </div>
+    <button type="button" class="btn primary gate-submit" id="gateSubmit">Entrar</button>
+    <p class="gate-note">Esto es solo una etiqueta para saber quién cargó cada dato — no es una contraseña.</p>
+  </div>
+</div>
+
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <span class="eyebrow">Control de calidad · laboratorio</span>
+      <h1>Bitácora QAQC — Envíos y resultados</h1>
+    </div>
+    <div class="top-controls">
+      <div class="segmented" id="areaToggle" role="tablist" aria-label="Área"></div>
+      <div class="identity" id="identityBox">
+        <span class="who-lbl">Ingresando como</span>
+        <strong id="identityName">—</strong>
+        <button type="button" class="linklike" id="changeIdentityBtn">Cambiar</button>
+      </div>
+      <button class="btn primary" id="exportBtn" type="button">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0-3.5-3.5M10 13l3.5-3.5"/><path d="M4 14v1.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>
+        Descargar Excel
+      </button>
+      <details class="help">
+        <summary>
+          <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.3"/><path d="M10 9v4.2M10 6.7v.01"/></svg>
+          Seguridad y acceso
+        </summary>
+        <div class="help-panel">
+          <h3>¿Quién ve y quién edita?</h3>
+          <p><strong>Cualquier persona con este enlace</strong> puede ver y editar la información — no hay usuario ni contraseña real en esta versión.</p>
+          <p><strong>"Ingresado por"</strong> es solo una etiqueta para saber quién cargó cada fila, no una credencial de acceso.</p>
+          <p>Comparte el enlace únicamente con tu equipo. Si más adelante necesitas roles reales (algunas personas solo pueden ver, otras editar), se puede agregar inicio de sesión más adelante.</p>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <div id="dbBanner"></div>
+
+  <div class="layout">
+    <nav class="sidebar" id="sidebar" aria-label="Secciones"></nav>
+    <main class="content" id="content"></main>
+  </div>
+
+  <footer class="foot">
+    <span>Muestras 1.5 cm · Densidad · Análisis Químico · USC · Compósitos · DRX — Exploraciones y Mina</span>
+    <span id="syncNote">—</span>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ===================== Supabase ===================== */
+  var SUPABASE_URL = "https://etyvvzcdstsdyvlyfodu.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_5Tdi2yr8Mzs6cxIVT0_5oQ_dUZw4CgC";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  /* ===================== data model ===================== */
+
+  var F = {
+    batch:        {key:"batch",        label:"Batch",              type:"text"},
+    sondaje:      {key:"sondaje",      label:"Sondaje",            type:"text"},
+    dispatch:     {key:"dispatch",     label:"Dispatch",           type:"text"},
+    numMuestras:  {key:"numMuestras",  label:"N° de Muestras",     type:"text"},
+    numEnvio:     {key:"numEnvio",     label:"N° de Envío",        type:"text"},
+    fechaRecibida:{key:"fechaRecibida",label:"Fecha Recibida",     type:"date"},
+    fechaFinal:   {key:"fechaFinal",   label:"Fecha Finalizada",   type:"date"},
+    fechaSolic:   {key:"fechaSolic",   label:"Fecha Solicitud",    type:"date"},
+    fechaResult:  {key:"fechaResult",  label:"Fecha de Resultados",type:"date"}
+  };
+
+  var FIELDS_PREP    = [F.batch, F.sondaje, F.dispatch, F.numMuestras, F.numEnvio, F.fechaRecibida, F.fechaFinal];
+  var FIELDS_DENSIDAD= [F.sondaje, F.dispatch, F.numMuestras, F.fechaSolic, F.fechaResult];
+  var FIELDS_BATCH5  = [F.batch, F.dispatch, F.numMuestras, F.fechaSolic, F.fechaResult];
+  var FIELDS_BATCH4  = [F.batch, F.dispatch, F.numMuestras, F.fechaSolic];
+
+  var AREAS = [
+    {key:"exploraciones", label:"Exploraciones", sheet:"EXP"},
+    {key:"mina",           label:"Mina",          sheet:"MIN"}
+  ];
+
+  var SECTIONS = [
+    {key:"muestras_prep",         group:"Muestras 1.5 cm",        title:"Preparación", sheet:"Muestras1.5cm-Prep",  fields:FIELDS_PREP,     status:{start:"fechaRecibida", end:"fechaFinal"}},
+    {key:"muestras_reanalisis",   group:"Muestras 1.5 cm",        title:"Reanálisis",  sheet:"Muestras1.5cm-Reanal",fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+
+    {key:"densidad_primario",     group:"Densidad",                title:"Primario",     sheet:"Densidad-Primario",   fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"densidad_secundario",   group:"Densidad",                title:"Secundario",   sheet:"Densidad-Secundario", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"densidad_reanalisis",   group:"Densidad",                title:"Reanálisis",   sheet:"Densidad-Reanalisis", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+
+    {key:"quimico_primario",      group:"Análisis Químico 1.5 cm", title:"Primario",     sheet:"AnalisisQ-Primario",  fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"quimico_secundario",    group:"Análisis Químico 1.5 cm", title:"Secundario",   sheet:"AnalisisQ-Secund",    fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"quimico_reanalisis",    group:"Análisis Químico 1.5 cm", title:"Reanálisis",   sheet:"AnalisisQ-Reanalisis",fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+
+    {key:"usc",                   group:"Resistencia",             title:"USC",          sheet:"USC",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"usc_reanalisis",        group:"Resistencia",             title:"Reanálisis",   sheet:"USC-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+
+    {key:"compositos_prep",       group:"Compósitos",              title:"Preparación",  sheet:"Compositos-Prep",     fields:FIELDS_BATCH4,   status:null},
+    {key:"compositos_primario",   group:"Compósitos",              title:"Primario",     sheet:"Compositos-Primario", fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"compositos_secundario", group:"Compósitos",              title:"Secundario",   sheet:"Compositos-Secund",   fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"compositos_reanalisis", group:"Compósitos",              title:"Reanálisis",   sheet:"Compositos-Reanalisis",fields:FIELDS_BATCH5,  status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
+
+    {key:"drx",                   group:"Mineralogía",             title:"DRX",          sheet:"DRX",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"drx_reanalisis",        group:"Mineralogía",             title:"Reanálisis",   sheet:"DRX-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true}
+  ];
+
+  var GROUPS = [];
+  SECTIONS.forEach(function(s){ if(GROUPS.indexOf(s.group)===-1) GROUPS.push(s.group); });
+
+  var GROUP_ICONS = {
+    "Muestras 1.5 cm":            '<rect x="7.5" y="2.6" width="5" height="14.8" rx="1.4"/><line x1="7.5" y1="7.6" x2="12.5" y2="7.6"/><line x1="7.5" y1="12.4" x2="12.5" y2="12.4"/>',
+    "Densidad":                    '<line x1="10" y1="3" x2="10" y2="15.5"/><line x1="4.2" y1="6" x2="15.8" y2="6"/><circle cx="4.2" cy="10.2" r="2.1"/><circle cx="15.8" cy="10.2" r="2.1"/><line x1="7" y1="17" x2="13" y2="17"/>',
+    "Análisis Químico 1.5 cm":     '<path d="M8.3 3h3.4M8.7 3v4.3l-3.8 6.8a1.7 1.7 0 0 0 1.5 2.5h7.2a1.7 1.7 0 0 0 1.5-2.5l-3.8-6.8V3"/><line x1="7.2" y1="11.4" x2="12.8" y2="11.4"/>',
+    "Resistencia":                 '<rect x="6" y="7.8" width="8" height="6.4" rx="1"/><path d="M10 4.8v2.2M8.1 5.9l1.9-1.9 1.9 1.9M10 17.4v-2.2M8.1 16.3l1.9 1.9 1.9-1.9"/>',
+    "Compósitos":                  '<circle cx="7.6" cy="10" r="4.4"/><circle cx="12.4" cy="10" r="4.4"/>',
+    "Mineralogía":                 '<path d="M10 2.8 15.8 6.4v7.2L10 17.2l-5.8-3.6V6.4L10 2.8Z"/><circle cx="10" cy="10" r="1.3"/>'
+  };
+  var REANALISIS_ICON = '<path d="M15.6 8.4A5.6 5.6 0 1 0 16 11"/><path d="M15.6 4.2v4.2h-4.2"/>';
+  var GROUP_SLUGS = {
+    "Muestras 1.5 cm":            "muestras",
+    "Densidad":                    "densidad",
+    "Análisis Químico 1.5 cm":     "quimico",
+    "Resistencia":                 "resistencia",
+    "Compósitos":                  "compositos",
+    "Mineralogía":                 "mineralogia"
+  };
+  function groupIconEl(g, cls){
+    return el("svg",{class:cls||"g-icon",viewBox:"0 0 20 20",fill:"none",stroke:"currentColor","stroke-width":"1.5","stroke-linecap":"round","stroke-linejoin":"round",html:GROUP_ICONS[g]||""});
+  }
+  function groupChipEl(g){
+    var slug = GROUP_SLUGS[g] || "muestras";
+    return el("span", {class:"grp-chip grp-"+slug}, [groupIconEl(g), g]);
+  }
+
+  function sectionByKey(k){ for(var i=0;i<SECTIONS.length;i++) if(SECTIONS[i].key===k) return SECTIONS[i]; return null; }
+
+  /* ===================== state ===================== */
+
+  var state = {
+    area: "exploraciones",
+    sectionKey: null,      // null => resumen view
+    user: "",
+    currentReload: null    // reload fn for whichever section table is on screen
+  };
+
+  /* ===================== helpers ===================== */
+
+  function $(sel, root){ return (root||document).querySelector(sel); }
+  function $all(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
+  function el(tag, attrs, kids){
+    var n = document.createElement(tag);
+    if(attrs) Object.keys(attrs).forEach(function(k){
+      if(k==="class") n.className = attrs[k];
+      else if(k==="html") n.innerHTML = attrs[k];
+      else if(k.indexOf("on")===0) n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    });
+    (kids||[]).forEach(function(k){ if(k!=null) n.appendChild(typeof k==="string"?document.createTextNode(k):k); });
+    return n;
+  }
+  function nowIso(){ return new Date().toISOString(); }
+
+  /* rows table: qaqc_registros(id uuid, area text, section_key text,
+     payload jsonb, creado_por text, creado_en timestamptz,
+     actualizado_por text, actualizado_en timestamptz) */
+  function fetchRows(area, sectionKey, opts){
+    var asc = !!(opts && opts.ascending);
+    return sb.from("qaqc_registros").select("*")
+      .eq("area", area).eq("section_key", sectionKey)
+      .order("creado_en", {ascending: asc})
+      .then(function(res){
+        if(res.error) throw res.error;
+        return res.data || [];
+      });
+  }
+  function insertRow(area, sectionKey, payload, user){
+    return sb.from("qaqc_registros").insert({
+      area: area, section_key: sectionKey, payload: payload,
+      creado_por: user || "Sin asignar", creado_en: nowIso()
+    }).then(function(res){ if(res.error) throw res.error; });
+  }
+  function updateRow(id, newPayload, user){
+    return sb.from("qaqc_registros").update({
+      payload: newPayload, actualizado_por: user || "Sin asignar", actualizado_en: nowIso()
+    }).eq("id", id).then(function(res){ if(res.error) throw res.error; });
+  }
+  function deleteRow(id){
+    return sb.from("qaqc_registros").delete().eq("id", id).then(function(res){ if(res.error) throw res.error; });
+  }
+
+  function daysSince(dateStr){
+    if(!dateStr) return -1;
+    var d = new Date(dateStr+"T00:00:00");
+    if(isNaN(d.getTime())) return -1;
+    return Math.floor((Date.now()-d.getTime())/86400000);
+  }
+
+  function computeStatus(rec, cfg){
+    if(!cfg) return null;
+    var endVal = rec[cfg.end];
+    if(endVal) return {label:"Completado", cls:"good"};
+    var startVal = rec[cfg.start];
+    if(startVal && daysSince(startVal) > 15) return {label:"Atrasado", cls:"bad"};
+    return {label:"Pendiente", cls:"warn"};
+  }
+
+  function startFieldOf(section){
+    for(var i=0;i<section.fields.length;i++) if(section.fields[i].key==="fechaSolic") return "fechaSolic";
+    for(var i=0;i<section.fields.length;i++) if(section.fields[i].key==="fechaRecibida") return "fechaRecibida";
+    return null;
+  }
+  function computeDaysInfo(section, rec){
+    var startKey = startFieldOf(section);
+    if(!startKey) return null;
+    var startVal = rec[startKey];
+    if(!startVal) return null;
+    var endKey = section.status ? section.status.end : null;
+    var endVal = endKey ? rec[endKey] : null;
+    if(endVal){
+      var d1 = new Date(startVal+"T00:00:00"), d2 = new Date(endVal+"T00:00:00");
+      if(isNaN(d1.getTime())||isNaN(d2.getTime())) return null;
+      return {days:Math.round((d2.getTime()-d1.getTime())/86400000), ongoing:false};
+    }
+    var d = daysSince(startVal);
+    if(d<0) return null;
+    return {days:d, ongoing:true};
+  }
+
+  /* ===================== identidad (etiqueta, no autenticación) =====================
+     No hay contraseña real. Cualquier persona con el enlace de esta página
+     puede ver y editar. Esta pantalla de "Identifícate" solo cumple lo que
+     sí importa aquí: cada registro nuevo queda marcado con el nombre de
+     quien lo cargó, sin pedirlo fila por fila. */
+
+  var DEFAULT_USERS = ["Sin asignar"];
+  var usuariosList = DEFAULT_USERS.slice();
+
+  function initIdentity(){
+    var saved = null;
+    try{ saved = localStorage.getItem("qaqc_user"); }catch(e){}
+    if(saved) state.user = saved;
+    renderIdentityBox();
+    if(!saved) openGate(); else refreshUsuarios();
+  }
+
+  function refreshUsuarios(){
+    return sb.from("qaqc_usuarios").select("nombre").order("nombre").then(function(res){
+      if(!res.error && res.data && res.data.length){
+        usuariosList = res.data.map(function(r){ return r.nombre; });
+      }
+    }).catch(function(){ /* keep whatever list we already have */ });
+  }
+
+  function renderIdentityBox(){
+    var nameEl = $("#identityName");
+    if(nameEl) nameEl.textContent = state.user || "Sin identificar";
+  }
+
+  function populateGateSelect(){
+    var sel = $("#gateSelect");
+    sel.innerHTML = "";
+    usuariosList.forEach(function(n){ sel.appendChild(el("option",{value:n},[n])); });
+    sel.appendChild(el("option",{value:"__add__"},["+ Agregar nombre nuevo…"]));
+    var current = (state.user && usuariosList.indexOf(state.user)!==-1) ? state.user : usuariosList[0];
+    sel.value = current;
+    $("#gateNewWrap").hidden = (sel.value !== "__add__");
+  }
+
+  function openGate(){
+    refreshUsuarios().then(populateGateSelect).catch(populateGateSelect);
+    populateGateSelect();
+    $("#gateNewInput").value = "";
+    $("#gate").hidden = false;
+  }
+  function closeGate(){ $("#gate").hidden = true; }
+
+  function submitGate(){
+    var sel = $("#gateSelect");
+    var isNew = sel.value === "__add__";
+    var name = isNew ? $("#gateNewInput").value.trim() : sel.value;
+    if(!name){ $("#gateNewInput").focus(); return; }
+
+    function finish(){
+      state.user = name;
+      try{ localStorage.setItem("qaqc_user", name); }catch(e){}
+      renderIdentityBox();
+      closeGate();
+    }
+    if(isNew){
+      sb.from("qaqc_usuarios").upsert({nombre:name}).then(function(res){
+        if(res.error) throw res.error;
+        finish();
+      }).catch(function(err){
+        alert("No se pudo guardar el nombre en la lista compartida (" + (err&&err.message||"error") + "), pero puedes seguir usándolo en esta sesión.");
+        finish();
+      });
+    } else {
+      finish();
+    }
+  }
+
+  /* ===================== sidebar ===================== */
+
+  function renderSidebar(){
+    var nav = $("#sidebar");
+    nav.innerHTML = "";
+    nav.appendChild(el("div", {
+      class:"nav-resumen" + (state.sectionKey===null?" active":""),
+      onclick:function(){ selectSection(null); }
+    }, ["Resumen del área"]));
+
+    GROUPS.forEach(function(g){
+      var wrap = el("div", {class:"nav-group"});
+      var head = el("div", {class:"nav-group-head"}, [groupChipEl(g)]);
+      wrap.appendChild(head);
+      SECTIONS.filter(function(s){ return s.group===g; }).forEach(function(s){
+        var kids = [];
+        if(s.reanalisis) kids.push(el("svg",{class:"redo-icon",viewBox:"0 0 20 20",fill:"none",stroke:"currentColor","stroke-width":"1.6","stroke-linecap":"round","stroke-linejoin":"round",html:REANALISIS_ICON}));
+        kids.push(document.createTextNode(s.title));
+        var item = el("div", {
+          class:"nav-item" + (state.sectionKey===s.key?" active":""),
+          onclick:function(){ selectSection(s.key); }
+        }, kids);
+        wrap.appendChild(item);
+      });
+      nav.appendChild(wrap);
+    });
+  }
+
+  /* ===================== area toggle ===================== */
+
+  function renderAreaToggle(){
+    var box = $("#areaToggle");
+    box.innerHTML = "";
+    AREAS.forEach(function(a){
+      box.appendChild(el("button", {
+        type:"button", role:"tab", "aria-pressed": a.key===state.area ? "true":"false",
+        onclick:function(){ if(state.area!==a.key){ state.area=a.key; renderSidebar(); renderContent(); } }
+      }, [a.label]));
+    });
+  }
+
+  /* ===================== content router ===================== */
+
+  function renderContent(){
+    state.currentReload = null;
+    if(state.sectionKey===null) renderResumen();
+    else renderSectionView(sectionByKey(state.sectionKey));
+  }
+
+  function selectSection(key){
+    state.sectionKey = key;
+    renderSidebar();
+    renderContent();
+  }
+
+  /* ===================== resumen view ===================== */
+
+  function renderResumen(){
+    var content = $("#content");
+    content.innerHTML = "";
+    var panel = el("div", {class:"panel"});
+    panel.appendChild(el("div", {class:"panel-head"}, [
+      el("h2", {}, ["Resumen — " + AREAS.filter(function(a){return a.key===state.area;})[0].label]),
+      el("p", {}, ["Total de registros por etapa, con conteo de completados, pendientes y atrasados (más de 15 días sin resultado)."])
+    ]));
+    var body = el("div", {class:"panel-body"});
+    var grid = el("div", {class:"section-grid"}, [el("div",{class:"empty-state"},["Cargando…"])]);
+    body.appendChild(grid);
+    panel.appendChild(body);
+    content.appendChild(panel);
+
+    Promise.all(SECTIONS.map(function(s){
+      return fetchRows(state.area, s.key).then(function(rows){ return {section:s, rows:rows}; });
+    })).then(function(results){
+      grid.innerHTML = "";
+      var totalAll=0, goodAll=0, warnAll=0, badAll=0;
+      results.forEach(function(r){
+        var good=0, warn=0, bad=0;
+        r.rows.forEach(function(row){
+          var st = computeStatus(row.payload||{}, r.section.status);
+          if(!st) return;
+          if(st.cls==="good") good++; else if(st.cls==="warn") warn++; else bad++;
+        });
+        totalAll+=r.rows.length; goodAll+=good; warnAll+=warn; badAll+=bad;
+        var card = el("div", {class:"section-card", onclick:(function(k){ return function(){ selectSection(k); }; })(r.section.key)}, [
+          groupChipEl(r.section.group),
+          el("div", {class:"ttl"}, [r.section.title + " · " + r.rows.length]),
+        ]);
+        if(r.section.status){
+          card.appendChild(el("div", {class:"breakdown"}, [
+            el("span",{},[el("span",{class:"dot good"}), String(good)]),
+            el("span",{},[el("span",{class:"dot warn"}), String(warn)]),
+            el("span",{},[el("span",{class:"dot bad"}), String(bad)])
+          ]));
+        }
+        grid.appendChild(card);
+      });
+
+      var stats = el("div", {class:"stat-grid"});
+      stats.appendChild(el("div",{class:"stat-tile"},[el("div",{class:"n"},[String(totalAll)]), el("div",{class:"lbl"},["Registros totales"])]));
+      stats.appendChild(el("div",{class:"stat-tile good"},[el("div",{class:"n"},[String(goodAll)]), el("div",{class:"lbl"},["Completados"])]));
+      stats.appendChild(el("div",{class:"stat-tile warn"},[el("div",{class:"n"},[String(warnAll)]), el("div",{class:"lbl"},["Pendientes"])]));
+      stats.appendChild(el("div",{class:"stat-tile bad"},[el("div",{class:"n"},[String(badAll)]), el("div",{class:"lbl"},["Atrasados (>15 días)"])]));
+      body.insertBefore(stats, grid);
+    }).catch(function(){
+      grid.innerHTML = "";
+      grid.appendChild(el("div",{class:"empty-state"},["No se pudo cargar el resumen."]));
+    });
+  }
+
+  /* ===================== section (table) view ===================== */
+
+  function renderSectionView(section){
+    var content = $("#content");
+    content.innerHTML = "";
+    var panel = el("div", {class:"panel"});
+    panel.appendChild(el("div", {class:"panel-head"}, [
+      el("h2", {}, [groupChipEl(section.group), section.title]),
+      el("p", {}, [AREAS.filter(function(a){return a.key===state.area;})[0].label + " · edita cualquier celda directamente; los cambios se guardan solos."])
+    ]));
+    var body = el("div", {class:"panel-body"});
+    panel.appendChild(body);
+    content.appendChild(panel);
+
+    var mySectionKey = section.key, myArea = state.area;
+
+    // add-row form
+    var addRow = el("div", {class:"add-row"});
+    var inputs = {};
+    section.fields.forEach(function(f){
+      var input = el("input", {type:f.type, id:"new_"+section.key+"_"+f.key, placeholder:f.type==="text"?f.label:""});
+      inputs[f.key] = input;
+      addRow.appendChild(el("div", {class:"f"}, [el("label",{for:input.id},[f.label]), input]));
+    });
+    var addBtn = el("button", {class:"btn primary", type:"button", onclick:function(){
+      var data = {};
+      var hasValue = false;
+      section.fields.forEach(function(f){ var v = inputs[f.key].value.trim(); data[f.key]=v; if(v) hasValue=true; });
+      if(!hasValue){ inputs[section.fields[0].key].focus(); return; }
+      addBtn.disabled = true;
+      insertRow(myArea, mySectionKey, data, state.user).then(function(){
+        section.fields.forEach(function(f){ inputs[f.key].value=""; });
+        inputs[section.fields[0].key].focus();
+        if(state.currentReload) state.currentReload();
+      }).catch(function(err){
+        alert("No se pudo agregar el registro (" + (err&&err.message||"error") + ").");
+      }).finally(function(){ addBtn.disabled = false; });
+    }}, ["+ Agregar registro"]);
+    addRow.appendChild(addBtn);
+    body.appendChild(addRow);
+
+    var showDays = !!startFieldOf(section);
+    function colCount(){ return section.fields.length + (section.status?1:0) + (showDays?1:0) + 2; }
+
+    var wrap = el("div", {class:"table-wrap"});
+    var table = el("table", {class:"data"});
+    var headCells = section.fields.map(function(f){ return el("th",{},[f.label]); });
+    if(section.status) headCells.push(el("th",{},["Estado"]));
+    if(showDays) headCells.push(el("th",{title:"Días desde la solicitud/recepción; si ya hay resultado, es lo que tomó en total."},["Días"]));
+    headCells.push(el("th",{},["Ingresado por"]), el("th",{},[""]));
+    var thead = el("thead", {}, [el("tr", {}, headCells)]);
+    var tbody = el("tbody");
+    table.appendChild(thead); table.appendChild(tbody);
+    wrap.appendChild(table);
+    body.appendChild(wrap);
+
+    tbody.appendChild(el("tr",{},[el("td",{colspan:String(colCount())}, [
+      el("div",{class:"empty-state"},[el("div",{class:"big"},["⛏"]), "Cargando registros…"])
+    ])]));
+
+    function reload(){
+      if(state.sectionKey !== mySectionKey || state.area !== myArea) return;
+      fetchRows(myArea, mySectionKey).then(function(rows){
+        if(state.sectionKey !== mySectionKey || state.area !== myArea) return;
+        renderRows(tbody, section, rows, colCount(), showDays);
+        var note = $("#syncNote");
+        if(note) note.textContent = "Sincronizado " + new Date().toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
+      }).catch(function(err){
+        tbody.innerHTML = "";
+        tbody.appendChild(el("tr",{},[el("td",{colspan:String(colCount())}, [
+          el("div",{class:"empty-state"},["No se pudieron cargar los registros (" + (err&&err.message||"error") + ")."])
+        ])]));
+      });
+    }
+    state.currentReload = reload;
+    reload();
+  }
+
+  function renderRows(tbody, section, rows, colspan, showDays){
+    tbody.innerHTML = "";
+    if(rows.length===0){
+      tbody.appendChild(el("tr",{},[el("td",{colspan:String(colspan)},[
+        el("div",{class:"empty-state"},[el("div",{class:"big"},["⛏"]),"Aún no hay registros. Usa el formulario de arriba para agregar el primero."])
+      ])]));
+      return;
+    }
+    rows.forEach(function(row){
+      var data = row.payload || {};
+      var tr = el("tr");
+      section.fields.forEach(function(f){
+        var input = el("input", {type:f.type, value:data[f.key]||""});
+        input.addEventListener("change", function(){
+          updateCell(row, section, f.key, input.value);
+        });
+        tr.appendChild(el("td",{},[input]));
+      });
+      if(section.status){
+        var st = computeStatus(data, section.status);
+        tr.appendChild(el("td",{},[el("span",{class:"badge "+st.cls},[st.label])]));
+      }
+      if(showDays){
+        var di = computeDaysInfo(section, data);
+        if(di){
+          tr.appendChild(el("td",{},[el("span",{class:"mono days" + (di.ongoing?" ongoing":"")},[String(di.days)])]));
+        } else {
+          tr.appendChild(el("td",{},[el("span",{class:"mono days ongoing"},["—"])]));
+        }
+      }
+      tr.appendChild(el("td",{},[el("span",{class:"who mono"},[row.creado_por||"—"])]));
+      tr.appendChild(el("td",{},[el("button",{class:"icon-btn", title:"Eliminar", onclick:(function(id){ return function(){
+        if(confirm("¿Eliminar este registro? Esta acción no se puede deshacer.")){
+          deleteRow(id).then(function(){ if(state.currentReload) state.currentReload(); }).catch(function(err){
+            alert("No se pudo eliminar (" + (err&&err.message||"error") + ").");
+          });
+        }
+      }; })(row.id)}, [
+        el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.6", html:'<path d="M4.5 6h11M8.2 6V4.6A1 1 0 0 1 9.2 3.6h1.6a1 1 0 0 1 1 1V6M6.2 6l.6 9.3a1.2 1.2 0 0 0 1.2 1.1h3.9a1.2 1.2 0 0 0 1.2-1.1l.6-9.3"/>'})
+      ])]));
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updateCell(row, section, field, value){
+    var newPayload = {};
+    Object.keys(row.payload||{}).forEach(function(k){ newPayload[k] = row.payload[k]; });
+    newPayload[field] = value;
+    row.payload = newPayload; // keep local cache in sync until next reload
+    updateRow(row.id, newPayload, state.user).then(function(){
+      if(state.currentReload) state.currentReload();
+    }).catch(function(err){
+      alert("No se pudo guardar el cambio (" + (err&&err.message||"error") + ").");
+    });
+  }
+
+  /* ===================== export ===================== */
+
+  function setExporting(on){
+    var btn = $("#exportBtn");
+    btn.disabled = on;
+    btn.lastChild.textContent = on ? " Generando…" : " Descargar Excel";
+  }
+
+  function downloadBlob(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+  }
+
+  function exportExcel(){
+    setExporting(true);
+    var tasks = [];
+    AREAS.forEach(function(area){
+      SECTIONS.forEach(function(section){
+        tasks.push(fetchRows(area.key, section.key, {ascending:true}).then(function(rows){
+          return {area:area, section:section, rows:rows};
+        }));
+      });
+    });
+    Promise.all(tasks).then(function(results){
+      var wb = XLSX.utils.book_new();
+      results.forEach(function(r){
+        var header = r.section.fields.map(function(f){ return f.label; }).concat(["Ingresado por"]);
+        var rows = r.rows.map(function(row){
+          var data = row.payload || {};
+          return r.section.fields.map(function(f){ return data[f.key]||""; }).concat([row.creado_por||""]);
+        });
+        var aoa = [header].concat(rows);
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        var name = (r.area.sheet + "-" + r.section.sheet).slice(0,31);
+        XLSX.utils.book_append_sheet(wb, ws, name);
+      });
+      var out = XLSX.write(wb, {bookType:"xlsx", type:"array"});
+      var blob = new Blob([out], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+      var stamp = new Date().toISOString().slice(0,10);
+      downloadBlob(blob, "QAQC_Envios_Resultados_"+stamp+".xlsx");
+    }).catch(function(err){
+      alert("No se pudo generar el Excel (" + (err&&err.message||"error") + ").");
+    }).finally(function(){ setExporting(false); });
+  }
+
+  /* ===================== connection banner ===================== */
+
+  function renderDbBanner(ok, msg){
+    var box = $("#dbBanner");
+    box.innerHTML = "";
+    if(!ok){
+      box.appendChild(el("div", {class:"banner bad"}, [
+        "No se pudo conectar con la base de datos" + (msg? (" (" + msg + ")") : "") + ". Los datos no se van a guardar hasta que se resuelva — revisa tu conexión a internet."
+      ]));
+    }
+  }
+
+  /* ===================== realtime ===================== */
+
+  function setupRealtime(){
+    sb.channel("qaqc-registros-cambios")
+      .on("postgres_changes", {event:"*", schema:"public", table:"qaqc_registros"}, function(){
+        if(state.sectionKey!==null && state.currentReload) state.currentReload();
+        else if(state.sectionKey===null) renderResumen();
+      })
+      .subscribe();
+  }
+
+  /* ===================== boot ===================== */
+
+  function boot(){
+    renderAreaToggle();
+    renderSidebar();
+    renderContent();
+    initIdentity();
+    $("#changeIdentityBtn").addEventListener("click", openGate);
+    $("#gateSelect").addEventListener("change", function(){
+      $("#gateNewWrap").hidden = (this.value !== "__add__");
+      if(this.value === "__add__") $("#gateNewInput").focus();
+    });
+    $("#gateSubmit").addEventListener("click", submitGate);
+    $("#gateNewInput").addEventListener("keydown", function(e){ if(e.key==="Enter") submitGate(); });
+    $("#exportBtn").addEventListener("click", exportExcel);
+
+    fetchRows("exploraciones", "muestras_prep").then(function(){
+      renderDbBanner(true);
+    }).catch(function(err){
+      renderDbBanner(false, err && err.message);
+    });
+
+    setupRealtime();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
