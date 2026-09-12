@@ -519,9 +519,11 @@
      juntas) y sumando 1. Las secciones que no aparecen en este mapa (Densidad
      Reanálisis, Compósitos Preparación/Reanálisis, DRX Reanálisis, USC Reanálisis)
      todavía no tienen un prefijo definido, así que su Dispatch se sigue
-     escribiendo a mano hasta que Jimena confirme esos códigos. */
+     escribiendo a mano hasta que Jimena confirme esos códigos.
+     Preparación es distinto: no se auto-incrementa, es una lista cerrada
+     GP26-0001..GP26-0050 (ver DISPATCH_DROPDOWN) que se puede repetir entre
+     distintos batchs, por eso NO aparece en este mapa. */
   var DISPATCH_PREFIX = {
-    muestras_prep:                 "GP26-",
     quimico_primario:              "GQ26-01-",
     quimico_secundario:            "GQ26-06-",
     quimico_primario_reanalisis:   "GQ26-05-",
@@ -534,6 +536,18 @@
     drx:                           "GX26-01-"
   };
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+  /* ===================== Dispatch como lista cerrada (no auto-incremental) =====================
+     Para Preparación, Dispatch se elige de un desplegable fijo GP26-0001 a
+     GP26-0050 y el mismo código se puede repetir en varios batchs distintos
+     (a diferencia del resto de secciones, donde Dispatch es único y sube solo). */
+  var DISPATCH_DROPDOWN = {
+    muestras_prep: (function(){
+      var list = [];
+      for(var i=1;i<=50;i++) list.push("GP26-" + padNum(i,4));
+      return list;
+    })()
+  };
 
   /* ===================== lista cerrada de sondajes por área =====================
      El campo "Sondaje" ya no se escribe a mano: se elige de una lista fija según
@@ -920,9 +934,15 @@
     section.fields.forEach(function(f){
       var isAuto = (f.key === autoDispatchKey);
       var input;
+      var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
       if(f.key === "sondaje"){
         input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
         (SONDAJES_BY_AREA[myArea]||[]).forEach(function(code){
+          input.appendChild(el("option",{value:code},[code]));
+        });
+      } else if(dispatchOpts){
+        input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
+        dispatchOpts.forEach(function(code){
           input.appendChild(el("option",{value:code},[code]));
         });
       } else {
@@ -1004,9 +1024,10 @@
       var tr = el("tr");
       section.fields.forEach(function(f){
         var input;
-        if(f.key === "sondaje"){
+        var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
+        if(f.key === "sondaje" || dispatchOpts){
           var curVal = data[f.key]||"";
-          var opts = SONDAJES_BY_AREA[state.area]||[];
+          var opts = (f.key === "sondaje") ? (SONDAJES_BY_AREA[state.area]||[]) : dispatchOpts;
           input = el("select", {}, [el("option",{value:""},["Selecciona…"])]);
           if(curVal && opts.indexOf(curVal) === -1){
             input.appendChild(el("option",{value:curVal},[curVal]));
