@@ -248,13 +248,16 @@
   }
   table.data tbody tr:hover{background:var(--surface-2);}
   table.data tbody tr:last-child td{border-bottom:none;}
-  table.data input{
+  table.data input, table.data select{
     border:1px solid transparent;background:transparent;color:var(--ink);
     border-radius:4px;padding:5px 6px;width:100%;min-width:100px;
+    font-family:inherit;font-size:13px;
   }
-  table.data input:hover{border-color:var(--border);}
-  table.data input:focus{border-color:var(--accent);background:var(--surface);}
+  table.data input:hover, table.data select:hover{border-color:var(--border);}
+  table.data input:focus, table.data select:focus{border-color:var(--accent);background:var(--surface);}
   table.data input[type="date"]{min-width:132px;}
+  table.data select{cursor:pointer;}
+  .cell-view{display:block;padding:5px 6px;color:var(--ink);font-size:13px;}
 
   .badge{
     display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
@@ -270,6 +273,10 @@
   }
   .icon-btn:hover{background:var(--bad-soft);color:var(--bad);}
   .icon-btn svg{width:15px;height:15px;}
+  .icon-btn.edit:hover{background:var(--accent-soft);color:var(--accent);}
+  .icon-btn.done{color:var(--good);}
+  .icon-btn.done:hover{background:var(--good-soft);color:var(--good);}
+  .row-actions{display:flex;align-items:center;gap:2px;white-space:nowrap;}
 
   .empty-state{
     padding:34px 20px;text-align:center;color:var(--ink-dim);
@@ -607,6 +614,9 @@
 
   // qué grupos del menú lateral están desplegados (mostrando sus secciones)
   var expandedGroups = {};
+
+  // qué filas de una tabla de registros están en modo edición (id de fila -> true)
+  var editingRows = {};
   function toggleGroup(g){
     expandedGroups[g] = !expandedGroups[g];
     renderSidebar();
@@ -838,6 +848,7 @@
 
   function renderContent(){
     state.currentReload = null;
+    editingRows = {};
     if(state.sectionKey===null) renderResumen();
     else renderSectionView(sectionByKey(state.sectionKey));
   }
@@ -915,7 +926,7 @@
     var panel = el("div", {class:"panel"});
     panel.appendChild(el("div", {class:"panel-head"}, [
       el("h2", {}, [groupChipEl(section.group), section.title]),
-      el("p", {}, [AREAS.filter(function(a){return a.key===state.area;})[0].label + " · edita cualquier celda directamente; los cambios se guardan solos."])
+      el("p", {}, [AREAS.filter(function(a){return a.key===state.area;})[0].label + " · usa el lápiz de cada fila para editarla; los cambios se guardan solos mientras editas."])
     ]));
     var body = el("div", {class:"panel-body"});
     panel.appendChild(body);
@@ -1026,7 +1037,12 @@
     rows.forEach(function(row){
       var data = row.payload || {};
       var tr = el("tr");
+      var isEditing = !!editingRows[row.id];
       section.fields.forEach(function(f){
+        if(!isEditing){
+          tr.appendChild(el("td",{},[el("span",{class:"cell-view"},[data[f.key] || "—"])]));
+          return;
+        }
         var input;
         var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
         if(f.key === "sondaje" || dispatchOpts){
@@ -1061,7 +1077,18 @@
         }
       }
       tr.appendChild(el("td",{},[el("span",{class:"who mono"},[row.creado_por||"—"])]));
-      tr.appendChild(el("td",{},[el("button",{class:"icon-btn", title:"Eliminar", onclick:(function(id){ return function(){
+
+      var actions = el("td", {}, []);
+      var actionsWrap = el("div", {class:"row-actions"});
+      actionsWrap.appendChild(el("button",{class:"icon-btn edit" + (isEditing?" done":""), title: isEditing ? "Listo" : "Editar", onclick:(function(id){ return function(){
+        editingRows[id] = !editingRows[id];
+        renderRows(tbody, section, rows, colspan, showDays);
+      }; })(row.id)}, [
+        isEditing
+          ? el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.8", html:'<path d="M4 10.5l3.3 3.3L16 5.5"/>'})
+          : el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.6", html:'<path d="M13.3 3.3a1.5 1.5 0 0 1 2.1 2.1L6.6 14.2l-3.3.7.7-3.3L13.3 3.3z"/>'})
+      ]));
+      actionsWrap.appendChild(el("button",{class:"icon-btn", title:"Eliminar", onclick:(function(id){ return function(){
         if(confirm("¿Eliminar este registro? Esta acción no se puede deshacer.")){
           deleteRow(id).then(function(){ if(state.currentReload) state.currentReload(); }).catch(function(err){
             alert("No se pudo eliminar (" + (err&&err.message||"error") + ").");
@@ -1069,7 +1096,10 @@
         }
       }; })(row.id)}, [
         el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.6", html:'<path d="M4.5 6h11M8.2 6V4.6A1 1 0 0 1 9.2 3.6h1.6a1 1 0 0 1 1 1V6M6.2 6l.6 9.3a1.2 1.2 0 0 0 1.2 1.1h3.9a1.2 1.2 0 0 0 1.2-1.1l.6-9.3"/>'})
-      ])]));
+      ]));
+      actions.appendChild(actionsWrap);
+      tr.appendChild(actions);
+
       tbody.appendChild(tr);
     });
   }
