@@ -445,13 +445,14 @@
     labJob:       {key:"labJob",       label:"LabJob",             type:"text"},
     numMuestras:  {key:"numMuestras",  label:"N° de Muestras",     type:"text"},
     numEnvio:     {key:"numEnvio",     label:"N° de Envío",        type:"text"},
+    fechaEnvio:   {key:"fechaEnvio",   label:"Fecha de Envío",     type:"date"},
     fechaRecibida:{key:"fechaRecibida",label:"Fecha Recibida",     type:"date"},
     fechaFinal:   {key:"fechaFinal",   label:"Fecha Finalizada",   type:"date"},
     fechaSolic:   {key:"fechaSolic",   label:"Fecha Solicitud",    type:"date"},
     fechaResult:  {key:"fechaResult",  label:"Fecha de Resultados",type:"date"}
   };
 
-  var FIELDS_PREP    = [F.batch, F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.numEnvio, F.fechaRecibida, F.fechaFinal];
+  var FIELDS_PREP    = [F.batch, F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.numEnvio, F.fechaEnvio, F.fechaRecibida, F.fechaFinal];
   var FIELDS_DENSIDAD= [F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
   var FIELDS_BATCH5  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
   var FIELDS_BATCH4  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic];
@@ -554,7 +555,8 @@
      el área activa (Exploraciones o Mina), para que nadie escriba un sondaje que
      no existe y para que los de un área nunca aparezcan como opción en la otra.
      Mina: MR26001-11 hasta MR26057-11 (correlativo), EXCEPTO MR26019-11 y
-     MR26036-11, que pertenecen a Exploraciones. Exploraciones: ED26001-02,
+     MR26036-11, que pertenecen a Exploraciones, más MR25001-11 y MR25007-11
+     (año 25) que también son de Mina. Exploraciones: ED26001-02,
      ED26002-02, ED26003-02 ... hasta ED26007-02 (el número de sondaje sube,
      el sufijo siempre es -02), más esos dos MR26019-11 y MR26036-11.
      Si esta lista no es exactamente la correcta, dile a Claude los códigos
@@ -562,11 +564,13 @@
   function padNum(n, width){ var s = String(n); while(s.length < width) s = "0" + s; return s; }
   var SONDAJES_BY_AREA = (function(){
     var MINA_EXCLUIR = ["MR26019-11", "MR26036-11"];
+    var MINA_EXTRA = ["MR25001-11", "MR25007-11"];
     var mina = [];
     for(var i=1;i<=57;i++){
       var code = "MR26" + padNum(i,3) + "-11";
       if(MINA_EXCLUIR.indexOf(code) === -1) mina.push(code);
     }
+    mina = mina.concat(MINA_EXTRA);
     var exploraciones = [];
     for(var h=1;h<=7;h++) exploraciones.push("ED26" + padNum(h,3) + "-02");
     exploraciones = exploraciones.concat(MINA_EXCLUIR);
