@@ -61,7 +61,7 @@
     color:var(--ink-dim);
   }
 
-  .shell{max-width:1320px;margin:0 auto;padding:20px 20px 60px;}
+  .shell{max-width:1600px;margin:0 auto;padding:20px 20px 60px;}
 
   header.topbar{
     display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-end;
@@ -237,27 +237,41 @@
   .add-row input[readonly]{background:var(--surface-2);color:var(--ink-dim);cursor:default;}
 
   .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
-  table.data{border-collapse:collapse;width:100%;min-width:640px;}
+  table.data{border-collapse:collapse;width:100%;}
   table.data th{
     position:sticky;top:0;background:var(--surface-2);text-align:left;
-    font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim);
-    padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap;
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-dim);
+    padding:7px 6px;border-bottom:1px solid var(--border);white-space:normal;
   }
   table.data td{
-    padding:6px 10px;border-bottom:1px solid var(--border);vertical-align:middle;
+    padding:4px 5px;border-bottom:1px solid var(--border);vertical-align:middle;
   }
   table.data tbody tr:hover{background:var(--surface-2);}
   table.data tbody tr:last-child td{border-bottom:none;}
   table.data input, table.data select{
     border:1px solid transparent;background:transparent;color:var(--ink);
-    border-radius:4px;padding:5px 6px;width:100%;min-width:100px;
-    font-family:inherit;font-size:13px;
+    border-radius:4px;padding:4px 5px;width:100%;min-width:52px;
+    font-family:inherit;font-size:12px;
   }
   table.data input:hover, table.data select:hover{border-color:var(--border);}
   table.data input:focus, table.data select:focus{border-color:var(--accent);background:var(--surface);}
-  table.data input[type="date"]{min-width:132px;}
+  table.data input[type="date"]{min-width:108px;font-size:11.5px;}
   table.data select{cursor:pointer;}
-  .cell-view{display:block;padding:5px 6px;color:var(--ink);font-size:13px;}
+  .cell-view{
+    display:block;padding:4px 5px;color:var(--ink);font-size:12px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;
+  }
+
+  /* fila de filtros bajo los encabezados de cada tabla de registros */
+  table.data thead tr.filter-row th{
+    position:static;top:auto;background:var(--surface);padding:4px 5px;
+    text-transform:none;letter-spacing:0;
+  }
+  table.data thead tr.filter-row input, table.data thead tr.filter-row select{
+    width:100%;font-size:11px;padding:4px 5px;border:1px solid var(--border);
+    border-radius:4px;background:var(--surface);color:var(--ink);min-width:0;
+  }
+  table.data thead tr.filter-row input::placeholder{color:var(--ink-faint);}
 
   .badge{
     display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;
@@ -470,7 +484,11 @@
   ];
 
   var SECTIONS = [
-    {key:"muestras_prep",              group:"Muestras 1.5 cm", title:"Preparación",             sheet:"Muestras1.5cm-Prep",   fields:FIELDS_PREP,   status:{start:"fechaRecibida", end:"fechaFinal"}},
+    {key:"muestras_prep",              group:"Muestras 1.5 cm", title:"Preparación",             sheet:"Muestras1.5cm-Prep",   fields:FIELDS_PREP,   status:{start:"fechaRecibida", end:"fechaFinal"},
+      dayCols:[
+        {label:"Días Envío→Recibida",   start:"fechaEnvio",    end:"fechaRecibida"},
+        {label:"Días Recibida→Final",   start:"fechaRecibida", end:"fechaFinal"}
+      ]},
     {key:"quimico_primario",           group:"Muestras 1.5 cm", title:"A.Q. Primario",           sheet:"AnalisisQ-Primario",   fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}},
     {key:"quimico_primario_reanalisis",group:"Muestras 1.5 cm", title:"A.Q. Primario Reanálisis",sheet:"AnalisisQ-PriReanal",  fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
     {key:"quimico_secundario",         group:"Muestras 1.5 cm", title:"A.Q. Secundario",         sheet:"AnalisisQ-Secund",     fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}},
@@ -706,6 +724,32 @@
     return {days:d, ongoing:true};
   }
 
+  /* Igual que computeDaysInfo pero para columnas de días "a la medida" definidas
+     en section.dayCols (por ejemplo Envío→Recibida), en vez del start/end genérico
+     de section.status. Si la fecha final todavía no está, cuenta los días
+     transcurridos desde la fecha inicial hasta hoy (ongoing:true). */
+  function computeDayDiff(rec, startKey, endKey){
+    var startVal = rec[startKey];
+    if(!startVal) return null;
+    var endVal = endKey ? rec[endKey] : null;
+    if(endVal){
+      var d1 = new Date(startVal+"T00:00:00"), d2 = new Date(endVal+"T00:00:00");
+      if(isNaN(d1.getTime())||isNaN(d2.getTime())) return null;
+      return {days:Math.round((d2.getTime()-d1.getTime())/86400000), ongoing:false};
+    }
+    var d = daysSince(startVal);
+    if(d<0) return null;
+    return {days:d, ongoing:true};
+  }
+
+  // muestra solo la parte antes de "@labtrack.app" en la columna "Ingresado por"
+  // (el correo completo queda disponible al pasar el mouse, via el title del span)
+  function shortUser(v){
+    if(!v) return "—";
+    var idx = v.indexOf("@");
+    return idx === -1 ? v : v.slice(0, idx);
+  }
+
   /* ===================== identidad (autenticación real con Supabase Auth) =====================
      Ahora sí hay usuario y contraseña reales: nadie ve ni edita nada sin
      iniciar sesión con una cuenta creada previamente en Supabase
@@ -926,7 +970,7 @@
     var panel = el("div", {class:"panel"});
     panel.appendChild(el("div", {class:"panel-head"}, [
       el("h2", {}, [groupChipEl(section.group), section.title]),
-      el("p", {}, [AREAS.filter(function(a){return a.key===state.area;})[0].label + " · usa el lápiz de cada fila para editarla; los cambios se guardan solos mientras editas."])
+      el("p", {}, [AREAS.filter(function(a){return a.key===state.area;})[0].label + " · usa el lápiz de cada fila para editarla (se guarda solo); los registros nuevos van al final; escribe en la fila debajo de cada encabezado para filtrar esa columna."])
     ]));
     var body = el("div", {class:"panel-body"});
     panel.appendChild(body);
@@ -989,16 +1033,90 @@
     addRow.appendChild(addBtn);
     body.appendChild(addRow);
 
-    var showDays = !!startFieldOf(section);
-    function colCount(){ return section.fields.length + (section.status?1:0) + (showDays?1:0) + 2; }
+    // si la sección trae sus propias columnas de días "a la medida" (dayCols),
+    // esas reemplazan a la columna genérica "Días" para no repetir la misma info
+    var showDays = !!startFieldOf(section) && !section.dayCols;
+    function colCount(){ return section.fields.length + (section.status?1:0) + (showDays?1:0) + (section.dayCols?section.dayCols.length:0) + 2; }
 
     var wrap = el("div", {class:"table-wrap"});
     var table = el("table", {class:"data"});
     var headCells = section.fields.map(function(f){ return el("th",{},[f.label]); });
     if(section.status) headCells.push(el("th",{},["Estado"]));
     if(showDays) headCells.push(el("th",{title:"Días desde la solicitud/recepción; si ya hay resultado, es lo que tomó en total."},["Días"]));
+    if(section.dayCols) section.dayCols.forEach(function(dc){
+      headCells.push(el("th",{title:"Días entre esas dos fechas; si la segunda todavía no tiene valor, cuenta los días transcurridos hasta hoy."},[dc.label]));
+    });
     headCells.push(el("th",{},["Ingresado por"]), el("th",{},[""]));
-    var thead = el("thead", {}, [el("tr", {}, headCells)]);
+
+    // ===== fila de filtros: una celda de filtro por cada columna, en el mismo orden =====
+    var filters = {};
+    var lastRows = [];
+    function textFilterCell(key){
+      var inp = el("input", {type:"text", placeholder:"Filtrar…"});
+      inp.addEventListener("input", function(){ filters[key] = inp.value.trim(); applyFilters(); });
+      return el("th", {}, [inp]);
+    }
+    function selectFilterCell(key, options){
+      var sel = el("select", {}, [el("option",{value:""},["Todos"])]);
+      options.forEach(function(o){ sel.appendChild(el("option",{value:o},[o])); });
+      sel.addEventListener("change", function(){ filters[key] = sel.value; applyFilters(); });
+      return el("th", {}, [sel]);
+    }
+    var filterCells = section.fields.map(function(f){
+      var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
+      if(f.key === "sondaje") return selectFilterCell(f.key, SONDAJES_BY_AREA[myArea]||[]);
+      if(dispatchOpts) return selectFilterCell(f.key, dispatchOpts);
+      return textFilterCell(f.key);
+    });
+    if(section.status) filterCells.push(selectFilterCell("__status", ["Completado","Pendiente","Atrasado"]));
+    if(showDays) filterCells.push(textFilterCell("__days"));
+    if(section.dayCols) section.dayCols.forEach(function(dc,i){ filterCells.push(textFilterCell("__day"+i)); });
+    filterCells.push(textFilterCell("__creado_por"));
+    filterCells.push(el("th", {}, []));
+    var filterRow = el("tr", {class:"filter-row"}, filterCells);
+
+    function rowMatches(row){
+      var data = row.payload || {};
+      for(var i=0;i<section.fields.length;i++){
+        var f = section.fields[i];
+        var fv = filters[f.key];
+        if(!fv) continue;
+        var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
+        if(f.key === "sondaje" || dispatchOpts){
+          if((data[f.key]||"") !== fv) return false;
+        } else {
+          if(String(data[f.key]||"").toLowerCase().indexOf(fv.toLowerCase()) === -1) return false;
+        }
+      }
+      if(section.status && filters.__status){
+        var st = computeStatus(data, section.status);
+        if(!st || st.label !== filters.__status) return false;
+      }
+      if(showDays && filters.__days){
+        var di = computeDaysInfo(section, data);
+        var disp = di ? String(di.days) : "—";
+        if(disp.toLowerCase().indexOf(filters.__days.toLowerCase()) === -1) return false;
+      }
+      if(section.dayCols){
+        for(var j=0;j<section.dayCols.length;j++){
+          var fk = "__day"+j;
+          if(!filters[fk]) continue;
+          var dc = section.dayCols[j];
+          var ddi = computeDayDiff(data, dc.start, dc.end);
+          var dstr = ddi ? String(ddi.days) : "—";
+          if(dstr.toLowerCase().indexOf(filters[fk].toLowerCase()) === -1) return false;
+        }
+      }
+      if(filters.__creado_por){
+        if(String(row.creado_por||"").toLowerCase().indexOf(filters.__creado_por.toLowerCase()) === -1) return false;
+      }
+      return true;
+    }
+    function applyFilters(){
+      renderRows(tbody, section, lastRows.filter(rowMatches), colCount(), showDays);
+    }
+
+    var thead = el("thead", {}, [el("tr", {}, headCells), filterRow]);
     var tbody = el("tbody");
     table.appendChild(thead); table.appendChild(tbody);
     wrap.appendChild(table);
@@ -1010,9 +1128,11 @@
 
     function reload(){
       if(state.sectionKey !== mySectionKey || state.area !== myArea) return;
-      fetchRows(myArea, mySectionKey).then(function(rows){
+      // ascending:true para que los registros nuevos aparezcan al final de la tabla
+      fetchRows(myArea, mySectionKey, {ascending:true}).then(function(rows){
         if(state.sectionKey !== mySectionKey || state.area !== myArea) return;
-        renderRows(tbody, section, rows, colCount(), showDays);
+        lastRows = rows;
+        applyFilters();
         var note = $("#syncNote");
         if(note) note.textContent = "Sincronizado " + new Date().toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"});
       }).catch(function(err){
@@ -1040,7 +1160,7 @@
       var isEditing = !!editingRows[row.id];
       section.fields.forEach(function(f){
         if(!isEditing){
-          tr.appendChild(el("td",{},[el("span",{class:"cell-view"},[data[f.key] || "—"])]));
+          tr.appendChild(el("td",{},[el("span",{class:"cell-view", title:data[f.key]||""},[data[f.key] || "—"])]));
           return;
         }
         var input;
@@ -1076,7 +1196,17 @@
           tr.appendChild(el("td",{},[el("span",{class:"mono days ongoing"},["—"])]));
         }
       }
-      tr.appendChild(el("td",{},[el("span",{class:"who mono"},[row.creado_por||"—"])]));
+      if(section.dayCols){
+        section.dayCols.forEach(function(dc){
+          var ddi = computeDayDiff(data, dc.start, dc.end);
+          if(ddi){
+            tr.appendChild(el("td",{},[el("span",{class:"mono days" + (ddi.ongoing?" ongoing":"")},[String(ddi.days)])]));
+          } else {
+            tr.appendChild(el("td",{},[el("span",{class:"mono days ongoing"},["—"])]));
+          }
+        });
+      }
+      tr.appendChild(el("td",{},[el("span",{class:"who mono", title:row.creado_por||""},[shortUser(row.creado_por)])]));
 
       var actions = el("td", {}, []);
       var actionsWrap = el("div", {class:"row-actions"});
