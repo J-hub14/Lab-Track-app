@@ -377,6 +377,50 @@
     border:1px solid var(--bad);border-radius:var(--radius);padding:8px 10px;
   }
   .gate-error[hidden]{display:none;}
+
+  /* ===== modal "Usuarios y permisos" (admin) ===== */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:200;background:rgba(10,14,20,.6);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay[hidden]{display:none;}
+  .modal-card{
+    width:min(880px,100%);max-height:88vh;overflow-y:auto;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:22px 22px 20px;display:flex;flex-direction:column;gap:14px;
+  }
+  .modal-card h2{margin:0;font-size:17px;}
+  .modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+  .modal-note{margin:0;font-size:12.5px;color:var(--ink-dim);}
+  .perm-list{display:flex;flex-direction:column;gap:10px;}
+  .perm-user-row{
+    border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;
+    display:flex;flex-direction:column;gap:9px;background:var(--surface-2);
+  }
+  .perm-user-row .head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .perm-user-row .email{font-weight:600;font-size:13px;}
+  .perm-admin-toggle{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-dim);cursor:pointer;}
+  .perm-admin-toggle input{cursor:pointer;}
+  .perm-sections{display:flex;flex-wrap:wrap;gap:5px 14px;}
+  .perm-sections label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-dim);cursor:pointer;}
+  .perm-sections input:disabled{cursor:not-allowed;}
+  .perm-group-lbl{
+    flex-basis:100%;font-family:"IBM Plex Sans Condensed",sans-serif;
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);margin-top:5px;
+  }
+  .perm-group-lbl:first-child{margin-top:0;}
+  .perm-add-row{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:end;padding-top:12px;border-top:1px solid var(--border);
+  }
+  .perm-add-row .f{display:flex;flex-direction:column;gap:4px;}
+  .perm-add-row .f label{font-size:11px;color:var(--ink-dim);}
+  .perm-add-row input{min-width:240px;}
+  .readonly-note{
+    margin:8px 0 0;font-size:12px;color:var(--ink-dim);
+    background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);
+    padding:8px 12px;
+  }
 </style>
 </head>
 <body>
@@ -419,6 +463,10 @@
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0-3.5-3.5M10 13l3.5-3.5"/><path d="M4 14v1.5A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>
         Descargar Excel
       </button>
+      <button class="btn" id="permsBtn" type="button" hidden>
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="7" r="3"/><path d="M2.5 16c.6-3 2.7-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><path d="M13.5 4.3c1.3.4 2.2 1.5 2.2 2.9 0 1.4-.9 2.5-2.2 2.9M16 11.6c1.6.5 2.7 1.7 3.1 3.9"/></svg>
+        Usuarios y permisos
+      </button>
       <details class="help">
         <summary>
           <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.3"/><path d="M10 9v4.2M10 6.7v.01"/></svg>
@@ -445,6 +493,10 @@
     <span>Muestras 1.5 cm · Densidad · Compósitos · Mineralogía · Resistencia — Exploraciones y Mina</span>
     <span id="syncNote">—</span>
   </footer>
+</div>
+
+<div class="modal-overlay" id="permsModal" hidden>
+  <div class="modal-card" id="permsCard"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -650,7 +702,11 @@
     area: "exploraciones",
     sectionKey: null,      // null => resumen view
     user: "",
-    currentReload: null    // reload fn for whichever section table is on screen
+    currentReload: null,   // reload fn for whichever section table is on screen
+    // permisos del usuario que inició sesión: quién puede agregar/editar/borrar y dónde.
+    // ver y descargar (Excel) siempre está permitido para cualquiera con cuenta;
+    // esto solo controla escritura. isAdmin:true = acceso total a todo.
+    permissions: {isAdmin:false, allowedSections:[]}
   };
 
   // qué grupos del menú lateral están desplegados (mostrando sus secciones)
@@ -857,13 +913,53 @@
 
   var appStarted = false;
 
+  /* ===================== permisos por sección =====================
+     Todos los que inician sesión pueden VER y DESCARGAR (Excel) todo,
+     en las dos áreas. Lo que se restringe es poder AGREGAR/EDITAR/BORRAR
+     registros: cada usuario tiene una fila en la tabla "user_permissions"
+     (is_admin + allowed_sections). Si es admin, puede editar todo. Si no,
+     solo puede editar las secciones listadas en allowed_sections — si esa
+     lista está vacía, es un usuario de "solo lectura" (ve y descarga, no
+     edita nada). */
+  function loadPermissions(){
+    return sb.from("user_permissions").select("*").eq("user_email", state.user).maybeSingle()
+      .then(function(res){
+        if(res.error){
+          // 42P01 = todavía no existe la tabla de permisos (no se ha corrido
+          // el script SQL). Mientras tanto no restringimos a nadie, para no
+          // dejar a todo el mundo bloqueado antes de tiempo.
+          if(res.error.code === "42P01"){
+            state.permissions = {isAdmin:true, allowedSections:[], noTableYet:true};
+            return;
+          }
+          throw res.error;
+        }
+        var row = res.data;
+        state.permissions = {
+          isAdmin: !!(row && row.is_admin),
+          allowedSections: (row && row.allowed_sections) || []
+        };
+      })
+      .catch(function(){
+        // ante cualquier error inesperado, por seguridad tratamos al usuario
+        // como de solo lectura hasta que se resuelva
+        state.permissions = {isAdmin:false, allowedSections:[]};
+      });
+  }
+
+  function canEditSection(sectionKey){
+    var p = state.permissions;
+    if(!p) return false;
+    return !!p.isAdmin || p.allowedSections.indexOf(sectionKey) !== -1;
+  }
+
   function onLoggedIn(session){
     state.user = session && session.user ? session.user.email : "";
     renderIdentityBox();
     closeGate();
     if(!appStarted){
       appStarted = true;
-      startApp();
+      loadPermissions().finally(function(){ startApp(); });
     }
   }
 
@@ -1017,10 +1113,14 @@
   function renderSectionView(section){
     var content = $("#content");
     content.innerHTML = "";
+    var canEdit = canEditSection(section.key);
     var panel = el("div", {class:"panel"});
     panel.appendChild(el("div", {class:"panel-head"}, [
       el("h2", {}, [groupChipEl(section.group), section.title]),
-      el("p", {}, [AREAS.filter(function(a){return a.key===state.area;})[0].label + " · usa el lápiz de cada fila para editarla (se guarda solo); los registros nuevos van al final; escribe en la fila debajo de cada encabezado para filtrar esa columna."])
+      el("p", {}, [AREAS.filter(function(a){return a.key===state.area;})[0].label + (canEdit
+        ? " · usa el lápiz de cada fila para editarla (se guarda solo); los registros nuevos van al final; escribe en la fila debajo de cada encabezado para filtrar esa columna."
+        : " · escribe en la fila debajo de cada encabezado para filtrar esa columna.")]),
+      canEdit ? null : el("p", {class:"readonly-note"}, ["Solo lectura: puedes ver y descargar esta sección, pero no tienes permiso para agregar, editar ni borrar registros aquí."])
     ]));
     var body = el("div", {class:"panel-body"});
     panel.appendChild(body);
@@ -1028,60 +1128,62 @@
 
     var mySectionKey = section.key, myArea = state.area;
 
-    // add-row form
-    var addRow = el("div", {class:"add-row"});
-    var inputs = {};
-    var autoDispatchKey = DISPATCH_PREFIX[section.key] ? "dispatch" : null;
-    function fillAutoDispatch(){
-      if(!autoDispatchKey) return;
-      var input = inputs[autoDispatchKey];
-      input.value = "…";
-      nextDispatchCode(section.key, myArea).then(function(code){
-        if(code) input.value = code;
-      }).catch(function(){ input.value = ""; input.readOnly = false; });
+    // add-row form (solo si el usuario tiene permiso de editar esta sección)
+    if(canEdit){
+      var addRow = el("div", {class:"add-row"});
+      var inputs = {};
+      var autoDispatchKey = DISPATCH_PREFIX[section.key] ? "dispatch" : null;
+      var fillAutoDispatch = function(){
+        if(!autoDispatchKey) return;
+        var input = inputs[autoDispatchKey];
+        input.value = "…";
+        nextDispatchCode(section.key, myArea).then(function(code){
+          if(code) input.value = code;
+        }).catch(function(){ input.value = ""; input.readOnly = false; });
+      };
+      section.fields.forEach(function(f){
+        var isAuto = (f.key === autoDispatchKey);
+        var input;
+        var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
+        if(SONDAJE_FIELD_KEYS[f.key]){
+          input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
+          (SONDAJES_BY_AREA[myArea]||[]).forEach(function(code){
+            input.appendChild(el("option",{value:code},[code]));
+          });
+        } else if(dispatchOpts){
+          input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
+          dispatchOpts.forEach(function(code){
+            input.appendChild(el("option",{value:code},[code]));
+          });
+        } else {
+          input = el("input", {type:f.type, id:"new_"+section.key+"_"+f.key, placeholder:f.type==="text"?f.label:""});
+        }
+        if(isAuto){
+          input.readOnly = true;
+          input.title = "Se genera solo, con el siguiente número disponible";
+        }
+        inputs[f.key] = input;
+        addRow.appendChild(el("div", {class:"f"}, [el("label",{for:input.id},[f.label]), input]));
+      });
+      fillAutoDispatch();
+      var addBtn = el("button", {class:"btn primary", type:"button", onclick:function(){
+        var data = {};
+        var hasValue = false;
+        section.fields.forEach(function(f){ var v = inputs[f.key].value.trim(); data[f.key]=v; if(v) hasValue=true; });
+        if(!hasValue){ inputs[section.fields[0].key].focus(); return; }
+        addBtn.disabled = true;
+        insertRow(myArea, mySectionKey, data, state.user).then(function(){
+          section.fields.forEach(function(f){ if(f.key !== autoDispatchKey) inputs[f.key].value=""; });
+          fillAutoDispatch();
+          inputs[section.fields[0].key].focus();
+          if(state.currentReload) state.currentReload();
+        }).catch(function(err){
+          alert("No se pudo agregar el registro (" + (err&&err.message||"error") + ").");
+        }).finally(function(){ addBtn.disabled = false; });
+      }}, ["+ Agregar registro"]);
+      addRow.appendChild(addBtn);
+      body.appendChild(addRow);
     }
-    section.fields.forEach(function(f){
-      var isAuto = (f.key === autoDispatchKey);
-      var input;
-      var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
-      if(SONDAJE_FIELD_KEYS[f.key]){
-        input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
-        (SONDAJES_BY_AREA[myArea]||[]).forEach(function(code){
-          input.appendChild(el("option",{value:code},[code]));
-        });
-      } else if(dispatchOpts){
-        input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
-        dispatchOpts.forEach(function(code){
-          input.appendChild(el("option",{value:code},[code]));
-        });
-      } else {
-        input = el("input", {type:f.type, id:"new_"+section.key+"_"+f.key, placeholder:f.type==="text"?f.label:""});
-      }
-      if(isAuto){
-        input.readOnly = true;
-        input.title = "Se genera solo, con el siguiente número disponible";
-      }
-      inputs[f.key] = input;
-      addRow.appendChild(el("div", {class:"f"}, [el("label",{for:input.id},[f.label]), input]));
-    });
-    fillAutoDispatch();
-    var addBtn = el("button", {class:"btn primary", type:"button", onclick:function(){
-      var data = {};
-      var hasValue = false;
-      section.fields.forEach(function(f){ var v = inputs[f.key].value.trim(); data[f.key]=v; if(v) hasValue=true; });
-      if(!hasValue){ inputs[section.fields[0].key].focus(); return; }
-      addBtn.disabled = true;
-      insertRow(myArea, mySectionKey, data, state.user).then(function(){
-        section.fields.forEach(function(f){ if(f.key !== autoDispatchKey) inputs[f.key].value=""; });
-        fillAutoDispatch();
-        inputs[section.fields[0].key].focus();
-        if(state.currentReload) state.currentReload();
-      }).catch(function(err){
-        alert("No se pudo agregar el registro (" + (err&&err.message||"error") + ").");
-      }).finally(function(){ addBtn.disabled = false; });
-    }}, ["+ Agregar registro"]);
-    addRow.appendChild(addBtn);
-    body.appendChild(addRow);
 
     // si la sección trae sus propias columnas de días "a la medida" (dayCols),
     // esas reemplazan a la columna genérica "Días" para no repetir la misma info
@@ -1163,7 +1265,7 @@
       return true;
     }
     function applyFilters(){
-      renderRows(tbody, section, lastRows.filter(rowMatches), colCount(), showDays);
+      renderRows(tbody, section, lastRows.filter(rowMatches), colCount(), showDays, canEdit);
     }
 
     var thead = el("thead", {}, [el("tr", {}, headCells), filterRow]);
@@ -1196,18 +1298,18 @@
     reload();
   }
 
-  function renderRows(tbody, section, rows, colspan, showDays){
+  function renderRows(tbody, section, rows, colspan, showDays, canEdit){
     tbody.innerHTML = "";
     if(rows.length===0){
       tbody.appendChild(el("tr",{},[el("td",{colspan:String(colspan)},[
-        el("div",{class:"empty-state"},[el("div",{class:"big"},["⛏"]),"Aún no hay registros. Usa el formulario de arriba para agregar el primero."])
+        el("div",{class:"empty-state"},[el("div",{class:"big"},["⛏"]), canEdit ? "Aún no hay registros. Usa el formulario de arriba para agregar el primero." : "Aún no hay registros."])
       ])]));
       return;
     }
     rows.forEach(function(row){
       var data = row.payload || {};
       var tr = el("tr");
-      var isEditing = !!editingRows[row.id];
+      var isEditing = canEdit && !!editingRows[row.id];
       section.fields.forEach(function(f){
         if(!isEditing){
           tr.appendChild(el("td",{},[el("span",{class:"cell-view", title:data[f.key]||""},[data[f.key] || "—"])]));
@@ -1259,25 +1361,27 @@
       tr.appendChild(el("td",{},[el("span",{class:"who mono", title:row.creado_por||""},[shortUser(row.creado_por)])]));
 
       var actions = el("td", {}, []);
-      var actionsWrap = el("div", {class:"row-actions"});
-      actionsWrap.appendChild(el("button",{class:"icon-btn edit" + (isEditing?" done":""), title: isEditing ? "Listo" : "Editar", onclick:(function(id){ return function(){
-        editingRows[id] = !editingRows[id];
-        renderRows(tbody, section, rows, colspan, showDays);
-      }; })(row.id)}, [
-        isEditing
-          ? el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.8", html:'<path d="M4 10.5l3.3 3.3L16 5.5"/>'})
-          : el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.6", html:'<path d="M13.3 3.3a1.5 1.5 0 0 1 2.1 2.1L6.6 14.2l-3.3.7.7-3.3L13.3 3.3z"/>'})
-      ]));
-      actionsWrap.appendChild(el("button",{class:"icon-btn", title:"Eliminar", onclick:(function(id){ return function(){
-        if(confirm("¿Eliminar este registro? Esta acción no se puede deshacer.")){
-          deleteRow(id).then(function(){ if(state.currentReload) state.currentReload(); }).catch(function(err){
-            alert("No se pudo eliminar (" + (err&&err.message||"error") + ").");
-          });
-        }
-      }; })(row.id)}, [
-        el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.6", html:'<path d="M4.5 6h11M8.2 6V4.6A1 1 0 0 1 9.2 3.6h1.6a1 1 0 0 1 1 1V6M6.2 6l.6 9.3a1.2 1.2 0 0 0 1.2 1.1h3.9a1.2 1.2 0 0 0 1.2-1.1l.6-9.3"/>'})
-      ]));
-      actions.appendChild(actionsWrap);
+      if(canEdit){
+        var actionsWrap = el("div", {class:"row-actions"});
+        actionsWrap.appendChild(el("button",{class:"icon-btn edit" + (isEditing?" done":""), title: isEditing ? "Listo" : "Editar", onclick:(function(id){ return function(){
+          editingRows[id] = !editingRows[id];
+          renderRows(tbody, section, rows, colspan, showDays, canEdit);
+        }; })(row.id)}, [
+          isEditing
+            ? el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.8", html:'<path d="M4 10.5l3.3 3.3L16 5.5"/>'})
+            : el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.6", html:'<path d="M13.3 3.3a1.5 1.5 0 0 1 2.1 2.1L6.6 14.2l-3.3.7.7-3.3L13.3 3.3z"/>'})
+        ]));
+        actionsWrap.appendChild(el("button",{class:"icon-btn", title:"Eliminar", onclick:(function(id){ return function(){
+          if(confirm("¿Eliminar este registro? Esta acción no se puede deshacer.")){
+            deleteRow(id).then(function(){ if(state.currentReload) state.currentReload(); }).catch(function(err){
+              alert("No se pudo eliminar (" + (err&&err.message||"error") + ").");
+            });
+          }
+        }; })(row.id)}, [
+          el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.6", html:'<path d="M4.5 6h11M8.2 6V4.6A1 1 0 0 1 9.2 3.6h1.6a1 1 0 0 1 1 1V6M6.2 6l.6 9.3a1.2 1.2 0 0 0 1.2 1.1h3.9a1.2 1.2 0 0 0 1.2-1.1l.6-9.3"/>'})
+        ]));
+        actions.appendChild(actionsWrap);
+      }
       tr.appendChild(actions);
 
       tbody.appendChild(tr);
@@ -1380,6 +1484,137 @@
     }).finally(function(){ setExporting(false); });
   }
 
+  /* ===================== usuarios y permisos (solo admin) =====================
+     Pantalla para decidir quién puede agregar/editar/borrar y en qué secciones.
+     Ver y descargar Excel nunca se restringe acá — eso lo puede hacer cualquiera
+     con una cuenta creada en Supabase. */
+
+  function openPermsModal(){
+    $("#permsModal").hidden = false;
+    loadAllPermissions();
+  }
+  function closePermsModal(){
+    $("#permsModal").hidden = true;
+  }
+
+  function loadAllPermissions(){
+    var card = $("#permsCard");
+    card.innerHTML = "";
+    card.appendChild(el("div",{class:"empty-state"},["Cargando usuarios…"]));
+    sb.from("user_permissions").select("*").order("user_email", {ascending:true}).then(function(res){
+      if(res.error) throw res.error;
+      renderPermsCard(res.data || []);
+    }).catch(function(err){
+      card.innerHTML = "";
+      var head = el("div",{class:"modal-head"},[
+        el("h2",{},["Usuarios y permisos"]),
+        el("button",{class:"btn", type:"button", onclick:closePermsModal},["Cerrar"])
+      ]);
+      card.appendChild(head);
+      card.appendChild(el("div",{class:"empty-state"},[
+        "No se pudo cargar la lista (" + (err&&err.message||"error") + "). Si es la primera vez, puede que todavía falte correr el script SQL que crea la tabla de permisos."
+      ]));
+    });
+  }
+
+  function renderPermsCard(rows){
+    var card = $("#permsCard");
+    card.innerHTML = "";
+    card.appendChild(el("div",{class:"modal-head"},[
+      el("h2",{},["Usuarios y permisos"]),
+      el("button",{class:"btn", type:"button", onclick:closePermsModal},["Cerrar"])
+    ]));
+    card.appendChild(el("p",{class:"modal-note"},[
+      "Cualquiera con cuenta puede ver y descargar toda la información. Acá controlas solo quién puede agregar, editar o borrar registros, y en qué secciones exactamente. Sin ninguna sección marcada (y sin ser administrador), el usuario queda en modo solo lectura."
+    ]));
+
+    var list = el("div",{class:"perm-list"});
+    rows.forEach(function(row){ list.appendChild(permUserRowEl(row)); });
+    if(rows.length===0){
+      list.appendChild(el("div",{class:"empty-state"},["Todavía no hay usuarios en la lista de permisos."]));
+    }
+    card.appendChild(list);
+
+    var addEmail = el("input",{type:"text", placeholder:"correo@labtrack.app"});
+    var addBtn = el("button",{class:"btn primary", type:"button", onclick:function(){
+      var email = addEmail.value.trim().toLowerCase();
+      if(!email){ addEmail.focus(); return; }
+      addBtn.disabled = true;
+      sb.from("user_permissions").insert({user_email: email, is_admin:false, allowed_sections:[]}).then(function(res){
+        if(res.error) throw res.error;
+        addEmail.value = "";
+        loadAllPermissions();
+      }).catch(function(err){
+        alert("No se pudo agregar (" + (err&&err.message||"error") + "). Revisa que el correo ya tenga una cuenta creada en Supabase Authentication.");
+      }).finally(function(){ addBtn.disabled = false; });
+    }}, ["+ Agregar usuario"]);
+    card.appendChild(el("div",{class:"perm-add-row"},[
+      el("div",{class:"f"},[el("label",{},["Correo del usuario (debe tener cuenta creada ya en Supabase)"]), addEmail]),
+      addBtn
+    ]));
+  }
+
+  function permUserRowEl(row){
+    var wrap = el("div",{class:"perm-user-row"});
+    var adminChk = el("input",{type:"checkbox"});
+    adminChk.checked = !!row.is_admin;
+    var sectionChks = {};
+
+    function savePatch(patch){
+      sb.from("user_permissions").update(patch).eq("user_email", row.user_email).then(function(res){
+        if(res.error) throw res.error;
+      }).catch(function(err){
+        alert("No se pudo guardar el cambio (" + (err&&err.message||"error") + ").");
+      });
+    }
+
+    function updateSectionChecksDisabled(){
+      Object.keys(sectionChks).forEach(function(k){ sectionChks[k].disabled = adminChk.checked; });
+    }
+
+    adminChk.addEventListener("change", function(){
+      row.is_admin = adminChk.checked;
+      savePatch({is_admin: adminChk.checked});
+      updateSectionChecksDisabled();
+    });
+
+    var headRow = el("div",{class:"head"},[
+      el("span",{class:"email"},[row.user_email]),
+      el("label",{class:"perm-admin-toggle"},[adminChk, "Administrador (acceso total)"]),
+      el("button",{class:"icon-btn", title:"Quitar de la lista", onclick:function(){
+        if(confirm("¿Quitar a " + row.user_email + " de la lista de permisos?\n\nSeguirá pudiendo ver y descargar todo si su cuenta sigue activa, pero ya no podrá agregar, editar ni borrar nada.")){
+          sb.from("user_permissions").delete().eq("user_email", row.user_email).then(function(res){
+            if(res.error) throw res.error;
+            loadAllPermissions();
+          }).catch(function(err){ alert("No se pudo quitar (" + (err&&err.message||"error") + ")."); });
+        }
+      }}, [el("svg",{viewBox:"0 0 20 20", fill:"none", stroke:"currentColor", "stroke-width":"1.6", html:'<path d="M4.5 6h11M8.2 6V4.6A1 1 0 0 1 9.2 3.6h1.6a1 1 0 0 1 1 1V6M6.2 6l.6 9.3a1.2 1.2 0 0 0 1.2 1.1h3.9a1.2 1.2 0 0 0 1.2-1.1l.6-9.3"/>'})])
+    ]);
+    wrap.appendChild(headRow);
+
+    var sectionsWrap = el("div",{class:"perm-sections"});
+    GROUPS.forEach(function(g){
+      sectionsWrap.appendChild(el("span",{class:"perm-group-lbl"},[g]));
+      SECTIONS.filter(function(s){ return s.group===g; }).forEach(function(s){
+        var chk = el("input",{type:"checkbox"});
+        chk.checked = (row.allowed_sections||[]).indexOf(s.key) !== -1;
+        chk.disabled = !!row.is_admin;
+        chk.addEventListener("change", function(){
+          var set = (row.allowed_sections||[]).slice();
+          var idx = set.indexOf(s.key);
+          if(chk.checked && idx===-1) set.push(s.key);
+          if(!chk.checked && idx!==-1) set.splice(idx,1);
+          row.allowed_sections = set;
+          savePatch({allowed_sections: set});
+        });
+        sectionChks[s.key] = chk;
+        sectionsWrap.appendChild(el("label",{},[chk, s.title]));
+      });
+    });
+    wrap.appendChild(sectionsWrap);
+    return wrap;
+  }
+
   /* ===================== connection banner ===================== */
 
   function renderDbBanner(ok, msg){
@@ -1409,6 +1644,7 @@
     renderAreaToggle();
     renderSidebar();
     renderContent();
+    $("#permsBtn").hidden = !state.permissions.isAdmin;
 
     fetchRows("exploraciones", "muestras_prep").then(function(){
       renderDbBanner(true);
@@ -1431,6 +1667,8 @@
       this.textContent = showing ? "👁 Mostrar" : "🙈 Ocultar";
     });
     $("#exportBtn").addEventListener("click", exportExcel);
+    $("#permsBtn").addEventListener("click", openPermsModal);
+    $("#permsModal").addEventListener("click", function(e){ if(e.target.id === "permsModal") closePermsModal(); });
 
     initIdentity();
   }
