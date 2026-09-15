@@ -33,6 +33,16 @@
     --grp-mineralogia-bg:#1B3A16;  --grp-mineralogia-fg:#8CE06A;
   }
 
+  /* Exploraciones usa el verde-turquesa de siempre (--accent de :root, arriba).
+     Mina usa un verde distinto, más "bosque/pasto", para que se note a simple
+     vista en qué área estás — se activa cambiando el atributo data-area del
+     body cada vez que se cambia de área (ver renderAreaToggle en el script). */
+  body[data-area="mina"]{
+    --accent:#7BC950;
+    --accent-ink:#0B2B08;
+    --accent-soft:#1E3517;
+  }
+
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -236,7 +246,10 @@
   .add-row input{min-width:120px;}
   .add-row input[readonly]{background:var(--surface-2);color:var(--ink-dim);cursor:default;}
 
-  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
+  /* alto máximo + scroll propio para que, al ir agregando registros, la fila
+     de encabezados (y no toda la página) sea la que se desplaza — queda fija
+     arriba mientras se hace scroll dentro de la tabla */
+  .table-wrap{overflow-x:auto;overflow-y:auto;max-height:64vh;border:1px solid var(--border);border-radius:var(--radius);}
   table.data{border-collapse:collapse;width:100%;}
   table.data th{
     position:sticky;top:0;background:var(--surface-2);text-align:left;
@@ -434,7 +447,7 @@
   </footer>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function(){
@@ -462,6 +475,8 @@
   var F = {
     batch:        {key:"batch",        label:"Batch",              type:"text"},
     sondaje:      {key:"sondaje",      label:"Sondaje",            type:"text"},
+    sondajeInicial:{key:"sondajeInicial",label:"Sondaje Inicial",  type:"text"},
+    sondajeFinal: {key:"sondajeFinal", label:"Sondaje Final",      type:"text"},
     dispatch:     {key:"dispatch",     label:"Dispatch",           type:"text"},
     labJob:       {key:"labJob",       label:"LabJob",             type:"text"},
     numMuestras:  {key:"numMuestras",  label:"N° de Muestras",     type:"text"},
@@ -473,7 +488,11 @@
     fechaResult:  {key:"fechaResult",  label:"Fecha de Resultados",type:"date"}
   };
 
-  var FIELDS_PREP    = [F.batch, F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.numEnvio, F.fechaEnvio, F.fechaRecibida, F.fechaFinal];
+  // campos cuyo valor se elige de la lista cerrada de sondajes (SONDAJES_BY_AREA),
+  // en vez de escribirse a mano
+  var SONDAJE_FIELD_KEYS = {sondaje:true, sondajeInicial:true, sondajeFinal:true};
+
+  var FIELDS_PREP    = [F.batch, F.sondaje, F.sondajeInicial, F.sondajeFinal, F.dispatch, F.labJob, F.numMuestras, F.numEnvio, F.fechaEnvio, F.fechaRecibida, F.fechaFinal];
   var FIELDS_DENSIDAD= [F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
   var FIELDS_BATCH5  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
   var FIELDS_BATCH4  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic];
@@ -498,7 +517,7 @@
     {key:"densidad_secundario",   group:"Densidad",    title:"Secundario",   sheet:"Densidad-Secundario", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}},
     {key:"densidad_reanalisis",   group:"Densidad",    title:"Reanálisis",   sheet:"Densidad-Reanalisis", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
 
-    {key:"compositos_prep",       group:"Compósitos",  title:"Preparación",  sheet:"Compositos-Prep",     fields:FIELDS_BATCH4,   status:null},
+    {key:"compositos_prep",       group:"Compósitos",  title:"Preparación",  sheet:"Compositos-Prep",     fields:FIELDS_BATCH4,   status:{start:"fechaSolic", end:null}},
     {key:"compositos_primario",   group:"Compósitos",  title:"Primario",     sheet:"Compositos-Primario", fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
     {key:"compositos_secundario", group:"Compósitos",  title:"Secundario",   sheet:"Compositos-Secund",   fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
     {key:"compositos_reanalisis", group:"Compósitos",  title:"Reanálisis",   sheet:"Compositos-Reanalisis",fields:FIELDS_BATCH5,  status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
@@ -559,6 +578,7 @@
     usc:                           "GE26-03-",
     compositos_primario:           "GQ26-03-",
     compositos_secundario:         "GQ26-04-",
+    compositos_prep:               "GP26-01-",
     drx:                           "GX26-01-"
   };
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
@@ -878,12 +898,20 @@
   /* ===================== area toggle ===================== */
 
   function renderAreaToggle(){
+    document.body.setAttribute("data-area", state.area);
     var box = $("#areaToggle");
     box.innerHTML = "";
     AREAS.forEach(function(a){
       box.appendChild(el("button", {
         type:"button", role:"tab", "aria-pressed": a.key===state.area ? "true":"false",
-        onclick:function(){ if(state.area!==a.key){ state.area=a.key; renderSidebar(); renderContent(); } }
+        onclick:function(){
+          if(state.area!==a.key){
+            state.area=a.key;
+            renderAreaToggle(); // vuelve a pintar los botones y cambia el color de acento del área
+            renderSidebar();
+            renderContent();
+          }
+        }
       }, [a.label]));
     });
   }
@@ -994,7 +1022,7 @@
       var isAuto = (f.key === autoDispatchKey);
       var input;
       var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
-      if(f.key === "sondaje"){
+      if(SONDAJE_FIELD_KEYS[f.key]){
         input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
         (SONDAJES_BY_AREA[myArea]||[]).forEach(function(code){
           input.appendChild(el("option",{value:code},[code]));
@@ -1064,7 +1092,7 @@
     }
     var filterCells = section.fields.map(function(f){
       var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
-      if(f.key === "sondaje") return selectFilterCell(f.key, SONDAJES_BY_AREA[myArea]||[]);
+      if(SONDAJE_FIELD_KEYS[f.key]) return selectFilterCell(f.key, SONDAJES_BY_AREA[myArea]||[]);
       if(dispatchOpts) return selectFilterCell(f.key, dispatchOpts);
       return textFilterCell(f.key);
     });
@@ -1082,7 +1110,7 @@
         var fv = filters[f.key];
         if(!fv) continue;
         var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
-        if(f.key === "sondaje" || dispatchOpts){
+        if(SONDAJE_FIELD_KEYS[f.key] || dispatchOpts){
           if((data[f.key]||"") !== fv) return false;
         } else {
           if(String(data[f.key]||"").toLowerCase().indexOf(fv.toLowerCase()) === -1) return false;
@@ -1165,9 +1193,9 @@
         }
         var input;
         var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
-        if(f.key === "sondaje" || dispatchOpts){
+        if(SONDAJE_FIELD_KEYS[f.key] || dispatchOpts){
           var curVal = data[f.key]||"";
-          var opts = (f.key === "sondaje") ? (SONDAJES_BY_AREA[state.area]||[]) : dispatchOpts;
+          var opts = SONDAJE_FIELD_KEYS[f.key] ? (SONDAJES_BY_AREA[state.area]||[]) : dispatchOpts;
           input = el("select", {}, [el("option",{value:""},["Selecciona…"])]);
           if(curVal && opts.indexOf(curVal) === -1){
             input.appendChild(el("option",{value:curVal},[curVal]));
@@ -1264,31 +1292,47 @@
 
   function exportExcel(){
     setExporting(true);
+    // solo se exporta el área que está activa en pantalla (Exploraciones o Mina),
+    // no las dos juntas
+    var currentArea = AREAS.filter(function(a){ return a.key === state.area; })[0];
     var tasks = [];
-    AREAS.forEach(function(area){
-      SECTIONS.forEach(function(section){
-        tasks.push(fetchRows(area.key, section.key, {ascending:true}).then(function(rows){
-          return {area:area, section:section, rows:rows};
-        }));
-      });
+    SECTIONS.forEach(function(section){
+      tasks.push(fetchRows(currentArea.key, section.key, {ascending:true}).then(function(rows){
+        return {section:section, rows:rows};
+      }));
     });
     Promise.all(tasks).then(function(results){
-      var wb = XLSX.utils.book_new();
+      var wb = new ExcelJS.Workbook();
       results.forEach(function(r){
         var header = r.section.fields.map(function(f){ return f.label; }).concat(["Ingresado por"]);
-        var rows = r.rows.map(function(row){
-          var data = row.payload || {};
-          return r.section.fields.map(function(f){ return data[f.key]||""; }).concat([row.creado_por||""]);
+        var name = r.section.sheet.slice(0,31);
+        var ws = wb.addWorksheet(name);
+        ws.addRow(header);
+
+        // encabezado con color distinto (verde de la marca) para que resalte
+        var headerRow = ws.getRow(1);
+        headerRow.eachCell(function(cell){
+          cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FF2FCBB0"}};
+          cell.font = {bold:true, color:{argb:"FF062420"}};
         });
-        var aoa = [header].concat(rows);
-        var ws = XLSX.utils.aoa_to_sheet(aoa);
-        var name = (r.area.sheet + "-" + r.section.sheet).slice(0,31);
-        XLSX.utils.book_append_sheet(wb, ws, name);
+
+        r.rows.forEach(function(row){
+          var data = row.payload || {};
+          ws.addRow(r.section.fields.map(function(f){ return data[f.key]||""; }).concat([row.creado_por||""]));
+        });
+
+        // autofiltro en todo el encabezado: permite filtrar por Sondaje (o
+        // cualquier otra columna) directamente desde Excel
+        if(header.length){
+          ws.autoFilter = { from:{row:1, column:1}, to:{row:1, column:header.length} };
+        }
+        ws.columns.forEach(function(col){ col.width = 16; });
       });
-      var out = XLSX.write(wb, {bookType:"xlsx", type:"array"});
-      var blob = new Blob([out], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-      var stamp = new Date().toISOString().slice(0,10);
-      downloadBlob(blob, "QAQC_Envios_Resultados_"+stamp+".xlsx");
+      return wb.xlsx.writeBuffer().then(function(buffer){
+        var blob = new Blob([buffer], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+        var stamp = new Date().toISOString().slice(0,10);
+        downloadBlob(blob, "QAQC_"+currentArea.label.replace(/\s+/g,"")+"_"+stamp+".xlsx");
+      });
     }).catch(function(err){
       alert("No se pudo generar el Excel (" + (err&&err.message||"error") + ").");
     }).finally(function(){ setExporting(false); });
