@@ -482,8 +482,8 @@
     numMuestras:  {key:"numMuestras",  label:"N° de Muestras",     type:"text"},
     numEnvio:     {key:"numEnvio",     label:"N° de Envío",        type:"text"},
     fechaEnvio:   {key:"fechaEnvio",   label:"Fecha de Envío",     type:"date"},
-    fechaRecibida:{key:"fechaRecibida",label:"Fecha Recibida",     type:"date"},
-    fechaFinal:   {key:"fechaFinal",   label:"Fecha Finalizada",   type:"date"},
+    fechaRecibida:{key:"fechaRecibida",label:"Fecha Recibida (Granulometría)",   type:"date"},
+    fechaFinal:   {key:"fechaFinal",   label:"Fecha Finalizada (Granulometría)", type:"date"},
     fechaSolic:   {key:"fechaSolic",   label:"Fecha Solicitud",    type:"date"},
     fechaResult:  {key:"fechaResult",  label:"Fecha de Resultados",type:"date"}
   };
@@ -525,8 +525,8 @@
     {key:"drx",                   group:"Mineralogía", title:"DRX",          sheet:"DRX",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
     {key:"drx_reanalisis",        group:"Mineralogía", title:"Reanálisis",   sheet:"DRX-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
 
-    {key:"usc",                   group:"Resistencia", title:"USC",          sheet:"USC",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
-    {key:"usc_reanalisis",        group:"Resistencia", title:"Reanálisis",   sheet:"USC-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true}
+    {key:"usc",                   group:"Resistencia", title:"UCS",          sheet:"UCS",                 fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"usc_reanalisis",        group:"Resistencia", title:"Reanálisis",   sheet:"UCS-Reanalisis",      fields:FIELDS_BATCH5,   status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true}
   ];
 
   var GROUPS = [];
@@ -560,9 +560,10 @@
   /* ===================== códigos de Dispatch autonuméricos =====================
      Para las secciones listadas aquí, el campo Dispatch no se escribe a mano:
      se arma solo como PREFIJO + número correlativo de 4 dígitos (0001, 0002...),
-     buscando el número más alto ya usado en esa sección (en Exploraciones y Mina
-     juntas) y sumando 1. Las secciones que no aparecen en este mapa (Densidad
-     Reanálisis, Compósitos Preparación/Reanálisis, DRX Reanálisis, USC Reanálisis)
+     buscando el número más alto ya usado en esa sección Y esa área (Mina y
+     Exploraciones llevan cada una su propio conteo — no comparten numeración)
+     y sumando 1. Las secciones que no aparecen en este mapa (Densidad
+     Reanálisis, Compósitos Reanálisis, DRX Reanálisis, UCS Reanálisis)
      todavía no tienen un prefijo definido, así que su Dispatch se sigue
      escribiendo a mano hasta que Jimena confirme esos códigos.
      Preparación es distinto: no se auto-incrementa, es una lista cerrada
@@ -599,32 +600,34 @@
      El campo "Sondaje" ya no se escribe a mano: se elige de una lista fija según
      el área activa (Exploraciones o Mina), para que nadie escriba un sondaje que
      no existe y para que los de un área nunca aparezcan como opción en la otra.
-     Mina: MR26001-11 hasta MR26057-11 (correlativo), EXCEPTO MR26019-11 y
-     MR26036-11, que pertenecen a Exploraciones, más MR25001-11 y MR25007-11
-     (año 25) que también son de Mina. Exploraciones: ED26001-02,
-     ED26002-02, ED26003-02 ... hasta ED26007-02 (el número de sondaje sube,
-     el sufijo siempre es -02), más esos dos MR26019-11 y MR26036-11.
+     Mina: MR26001-11 hasta MR26057-11 (correlativo), más MR25001-11 y
+     MR25007-11 (año 25). Exploraciones: ED26001-02, ED26002-02,
+     ED26003-02 ... hasta ED26007-02 (el número de sondaje sube, el sufijo
+     siempre es -02), más MR26019-11 y MR26036-11 — estos dos últimos
+     aparecen en LAS DOS áreas (Mina y Exploraciones) a la vez, por pedido
+     explícito de Jimena; todos los demás códigos son exclusivos de su área.
      Si esta lista no es exactamente la correcta, dile a Claude los códigos
      reales y se ajusta aquí mismo. */
   function padNum(n, width){ var s = String(n); while(s.length < width) s = "0" + s; return s; }
   var SONDAJES_BY_AREA = (function(){
-    var MINA_EXCLUIR = ["MR26019-11", "MR26036-11"];
+    var COMPARTIDOS_MINA_EXPLORACIONES = ["MR26019-11", "MR26036-11"];
     var MINA_EXTRA = ["MR25001-11", "MR25007-11"];
     var mina = [];
     for(var i=1;i<=57;i++){
-      var code = "MR26" + padNum(i,3) + "-11";
-      if(MINA_EXCLUIR.indexOf(code) === -1) mina.push(code);
+      mina.push("MR26" + padNum(i,3) + "-11");
     }
     mina = mina.concat(MINA_EXTRA);
     var exploraciones = [];
     for(var h=1;h<=7;h++) exploraciones.push("ED26" + padNum(h,3) + "-02");
-    exploraciones = exploraciones.concat(MINA_EXCLUIR);
+    exploraciones = exploraciones.concat(COMPARTIDOS_MINA_EXPLORACIONES);
     return { mina: mina, exploraciones: exploraciones };
   })();
-  function nextDispatchCode(sectionKey){
+  // el conteo de Dispatch es independiente por área: Mina y Exploraciones
+  // llevan cada una su propio GP26-01-0001, 0002... (no comparten numeración)
+  function nextDispatchCode(sectionKey, area){
     var prefix = DISPATCH_PREFIX[sectionKey];
     if(!prefix) return Promise.resolve(null);
-    return sb.from("qaqc_registros").select("payload").eq("section_key", sectionKey)
+    return sb.from("qaqc_registros").select("payload").eq("section_key", sectionKey).eq("area", area)
       .then(function(res){
         if(res.error) throw res.error;
         var maxN = 0;
@@ -713,12 +716,31 @@
     return Math.floor((Date.now()-d.getTime())/86400000);
   }
 
+  // igual que daysSince pero contando solo días hábiles (lunes a viernes,
+  // sin sábados ni domingos) — se usa para decidir si algo está "Atrasado"
+  function businessDaysSince(dateStr){
+    if(!dateStr) return -1;
+    var start = new Date(dateStr+"T00:00:00");
+    if(isNaN(start.getTime())) return -1;
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    if(today.getTime() <= start.getTime()) return 0;
+    var count = 0;
+    var cur = new Date(start.getTime());
+    while(cur.getTime() < today.getTime()){
+      cur.setDate(cur.getDate()+1);
+      var dow = cur.getDay(); // 0=domingo, 6=sábado
+      if(dow !== 0 && dow !== 6) count++;
+    }
+    return count;
+  }
+
   function computeStatus(rec, cfg){
     if(!cfg) return null;
     var endVal = rec[cfg.end];
     if(endVal) return {label:"Completado", cls:"good"};
     var startVal = rec[cfg.start];
-    if(startVal && daysSince(startVal) >= 8) return {label:"Atrasado", cls:"bad"};
+    if(startVal && businessDaysSince(startVal) > 15) return {label:"Atrasado", cls:"bad"};
     return {label:"Pendiente", cls:"warn"};
   }
 
@@ -943,7 +965,7 @@
     var panel = el("div", {class:"panel"});
     panel.appendChild(el("div", {class:"panel-head"}, [
       el("h2", {}, ["Resumen — " + AREAS.filter(function(a){return a.key===state.area;})[0].label]),
-      el("p", {}, ["Total de registros por etapa, con conteo de completados, pendientes y atrasados (8 días o más sin resultado)."])
+      el("p", {}, ["Total de registros por etapa, con conteo de completados, pendientes y atrasados (más de 15 días hábiles sin resultado)."])
     ]));
     var body = el("div", {class:"panel-body"});
     var grid = el("div", {class:"section-grid"}, [el("div",{class:"empty-state"},["Cargando…"])]);
@@ -982,7 +1004,7 @@
       stats.appendChild(el("div",{class:"stat-tile"},[el("div",{class:"n"},[String(totalAll)]), el("div",{class:"lbl"},["Registros totales"])]));
       stats.appendChild(el("div",{class:"stat-tile good"},[el("div",{class:"n"},[String(goodAll)]), el("div",{class:"lbl"},["Completados"])]));
       stats.appendChild(el("div",{class:"stat-tile warn"},[el("div",{class:"n"},[String(warnAll)]), el("div",{class:"lbl"},["Pendientes"])]));
-      stats.appendChild(el("div",{class:"stat-tile bad"},[el("div",{class:"n"},[String(badAll)]), el("div",{class:"lbl"},["Atrasados (≥8 días)"])]));
+      stats.appendChild(el("div",{class:"stat-tile bad"},[el("div",{class:"n"},[String(badAll)]), el("div",{class:"lbl"},["Atrasados (>15 días hábiles)"])]));
       body.insertBefore(stats, grid);
     }).catch(function(){
       grid.innerHTML = "";
@@ -1014,7 +1036,7 @@
       if(!autoDispatchKey) return;
       var input = inputs[autoDispatchKey];
       input.value = "…";
-      nextDispatchCode(section.key).then(function(code){
+      nextDispatchCode(section.key, myArea).then(function(code){
         if(code) input.value = code;
       }).catch(function(){ input.value = ""; input.readOnly = false; });
     }
