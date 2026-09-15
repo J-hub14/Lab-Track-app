@@ -1290,6 +1290,21 @@
     setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
   }
 
+  // convierte el valor guardado (siempre texto en el formulario) al tipo
+  // correcto para Excel: número real si son solo dígitos (Batch, N° de
+  // Muestras, N° de Envío...), fecha real si el campo es de tipo fecha,
+  // y texto tal cual para todo lo demás (Sondaje, LabJob, Dispatch, etc.)
+  var NUMERIC_RE = /^-?\d+(\.\d+)?$/;
+  function excelCellValue(f, raw){
+    if(raw === "" || raw == null) return "";
+    if(f.type === "date"){
+      var d = new Date(raw+"T00:00:00");
+      return isNaN(d.getTime()) ? raw : d;
+    }
+    var s = String(raw).trim();
+    return NUMERIC_RE.test(s) ? Number(s) : raw;
+  }
+
   function exportExcel(){
     setExporting(true);
     // solo se exporta el área que está activa en pantalla (Exploraciones o Mina),
@@ -1318,7 +1333,7 @@
 
         r.rows.forEach(function(row){
           var data = row.payload || {};
-          ws.addRow(r.section.fields.map(function(f){ return data[f.key]||""; }).concat([row.creado_por||""]));
+          ws.addRow(r.section.fields.map(function(f){ return excelCellValue(f, data[f.key]||""); }).concat([row.creado_por||""]));
         });
 
         // autofiltro en todo el encabezado: permite filtrar por Sondaje (o
@@ -1327,6 +1342,11 @@
           ws.autoFilter = { from:{row:1, column:1}, to:{row:1, column:header.length} };
         }
         ws.columns.forEach(function(col){ col.width = 16; });
+        // fechas con formato de fecha real (no texto) para que Excel las
+        // reconozca y se puedan ordenar/calcular
+        r.section.fields.forEach(function(f, idx){
+          if(f.type === "date") ws.getColumn(idx+1).numFmt = "yyyy-mm-dd";
+        });
       });
       return wb.xlsx.writeBuffer().then(function(buffer){
         var blob = new Blob([buffer], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
