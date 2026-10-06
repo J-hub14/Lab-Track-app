@@ -556,6 +556,16 @@
   // usado tanto por Preparación (Muestras 1.5 cm) como por Preparación de Compósitos
   var FIELDS_PREP    = [F.batch, F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.numEnvio, F.fechaEnvio, F.fechaRecibida, F.fechaFinal];
   var FIELDS_DENSIDAD= [F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
+  // Preparación de Compósitos: mismos campos, pero las fechas dicen "(Pesos)"
+  // en vez de "(Granulometría)". Mantienen la misma clave interna (fechaRecibida /
+  // fechaFinal) para que el estado y los días sigan funcionando igual.
+  var FIELDS_PREP_COMP = FIELDS_PREP.map(function(f){
+    if(f.key === "fechaRecibida") return {key:f.key, label:"Fecha Recibida (Pesos)",   type:f.type};
+    if(f.key === "fechaFinal")    return {key:f.key, label:"Fecha Finalizada (Pesos)", type:f.type};
+    return f;
+  });
+  // A.Q. Primario lleva además el Sondaje
+  var FIELDS_AQ_PRIMARIO = [F.batch, F.sondaje, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
   var FIELDS_BATCH5  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
   var FIELDS_BATCH4  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic];
 
@@ -570,7 +580,7 @@
         {label:"Días Envío→Recibida",   start:"fechaEnvio",    end:"fechaRecibida"},
         {label:"Días Recibida→Final",   start:"fechaRecibida", end:"fechaFinal"}
       ]},
-    {key:"quimico_primario",           group:"Muestras 1.5 cm", title:"A.Q. Primario",           sheet:"AnalisisQ-Primario",   fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}},
+    {key:"quimico_primario",           group:"Muestras 1.5 cm", title:"A.Q. Primario",           sheet:"AnalisisQ-Primario",   fields:FIELDS_AQ_PRIMARIO, status:{start:"fechaSolic", end:"fechaResult"}},
     {key:"quimico_primario_reanalisis",group:"Muestras 1.5 cm", title:"A.Q. Primario Reanálisis",sheet:"AnalisisQ-PriReanal",  fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
     {key:"quimico_secundario",         group:"Muestras 1.5 cm", title:"A.Q. Secundario",         sheet:"AnalisisQ-Secund",     fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}},
     {key:"quimico_secundario_reanalisis",group:"Muestras 1.5 cm", title:"A.Q. Secundario Reanálisis",sheet:"AnalisisQ-SecReanal",fields:FIELDS_BATCH5, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
@@ -579,7 +589,7 @@
     {key:"densidad_secundario",   group:"Densidad",    title:"Secundario",   sheet:"Densidad-Secundario", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}},
     {key:"densidad_reanalisis",   group:"Densidad",    title:"Reanálisis",   sheet:"Densidad-Reanalisis", fields:FIELDS_DENSIDAD, status:{start:"fechaSolic", end:"fechaResult"}, reanalisis:true},
 
-    {key:"compositos_prep",       group:"Compósitos",  title:"Preparación",  sheet:"Compositos-Prep",     fields:FIELDS_PREP,   status:{start:"fechaRecibida", end:"fechaFinal"},
+    {key:"compositos_prep",       group:"Compósitos",  title:"Preparación",  sheet:"Compositos-Prep",     fields:FIELDS_PREP_COMP,   status:{start:"fechaRecibida", end:"fechaFinal"},
       dayCols:[
         {label:"Días Envío→Recibida",   start:"fechaEnvio",    end:"fechaRecibida"},
         {label:"Días Recibida→Final",   start:"fechaRecibida", end:"fechaFinal"}
@@ -688,6 +698,13 @@
     exploraciones = exploraciones.concat(COMPARTIDOS_MINA_EXPLORACIONES);
     return { mina: mina, exploraciones: exploraciones };
   })();
+  // lista de sondajes que ve cada sección: la de su área, más "ZKTs" en los
+  // Compósitos de Exploraciones
+  function sondajeOptions(section, area){
+    var base = SONDAJES_BY_AREA[area] || [];
+    if(area === "exploraciones" && section.group === "Compósitos") return base.concat(["ZKTs"]);
+    return base;
+  }
   // el conteo de Dispatch es independiente por área: Mina y Exploraciones
   // llevan cada una su propio GP26-01-0001, 0002... (no comparten numeración)
   function nextDispatchCode(sectionKey, area){
@@ -1161,7 +1178,7 @@
         var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
         if(SONDAJE_FIELD_KEYS[f.key]){
           input = el("select", {id:"new_"+section.key+"_"+f.key}, [el("option",{value:""},["Selecciona…"])]);
-          (SONDAJES_BY_AREA[myArea]||[]).forEach(function(code){
+          sondajeOptions(section, myArea).forEach(function(code){
             input.appendChild(el("option",{value:code},[code]));
           });
         } else if(dispatchOpts){
@@ -1258,7 +1275,7 @@
     }
     var filterCells = section.fields.map(function(f){
       var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
-      if(SONDAJE_FIELD_KEYS[f.key]) return selectFilterCell(f.key, SONDAJES_BY_AREA[myArea]||[]);
+      if(SONDAJE_FIELD_KEYS[f.key]) return selectFilterCell(f.key, sondajeOptions(section, myArea));
       if(dispatchOpts) return selectFilterCell(f.key, dispatchOpts);
       return textFilterCell(f.key);
     });
@@ -1361,7 +1378,7 @@
         var dispatchOpts = (f.key === "dispatch") ? DISPATCH_DROPDOWN[section.key] : null;
         if(SONDAJE_FIELD_KEYS[f.key] || dispatchOpts){
           var curVal = data[f.key]||"";
-          var opts = SONDAJE_FIELD_KEYS[f.key] ? (SONDAJES_BY_AREA[state.area]||[]) : dispatchOpts;
+          var opts = SONDAJE_FIELD_KEYS[f.key] ? sondajeOptions(section, state.area) : dispatchOpts;
           input = el("select", {}, [el("option",{value:""},["Selecciona…"])]);
           if(curVal && opts.indexOf(curVal) === -1){
             input.appendChild(el("option",{value:curVal},[curVal]));
