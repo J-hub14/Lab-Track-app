@@ -592,7 +592,7 @@
   ];
   var FIELDS_CONTROLES = [{key:"fecha", label:"Fecha", type:"date"}, F.batch, F.sondaje].concat(CONTROL_TYPES.map(function(ct){
     return {key:ct.key, label:ct.label, type:"number", planKey:ct.plan};
-  }));
+  })).concat([{key:"observaciones", label:"Observaciones", type:"text"}]);
   function numOrZero(v){ var n = Number(v); return isNaN(n) ? 0 : n; }
   function controlsInserted(d){ var t = 0; CONTROL_TYPES.forEach(function(ct){ t += numOrZero(d[ct.key]); }); return t; }
   function controlsTotalBatch(d){ return (d.totalBatch === undefined || d.totalBatch === "" || d.totalBatch == null) ? null : numOrZero(d.totalBatch); }
