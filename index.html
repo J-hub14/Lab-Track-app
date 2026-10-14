@@ -247,6 +247,8 @@
   .add-row input{min-width:120px;}
   .add-row input[readonly]{background:var(--surface-2);color:var(--ink-dim);cursor:default;}
   .import-file-input{display:none;}
+  table.data tr.row-resumen td{background:#1C3B5A;border-top:1px solid #3F7FB8;border-bottom:1px solid #3F7FB8;font-weight:600;}
+  table.data tr.row-resumen td:first-child{box-shadow:inset 3px 0 0 #5AA9E6;color:#8CC8F5;}
   .ctl-ok{color:var(--good);font-weight:600;}
   .ctl-pend{color:var(--warn);font-weight:600;}
   .excel-box{
@@ -1535,6 +1537,7 @@
     rows.forEach(function(row){
       var data = row.payload || {};
       var tr = el("tr");
+      if(section.importMode === "controles" && ctlInfo(row).summary) tr.className = "row-resumen";
       var isEditing = canEdit && !!editingRows[row.id];
       section.fields.forEach(function(f){
         if(!isEditing){
@@ -1995,9 +1998,17 @@
 
         r.rows.forEach(function(row){
           var data = row.payload || {};
-          ws.addRow(r.section.fields.map(function(f){ return excelCellValue(f, data[f.key]||""); })
+          var xr = ws.addRow(r.section.fields.map(function(f){
+              if(r.section.importMode === "controles" && f.key === "fecha" && ctlInfo(row).summary) return "Resumen";
+              return excelCellValue(f, data[f.key]||""); })
             .concat(calc.map(function(c){ var v = c.get(data, row); return v == null ? "" : v; }))
             .concat([row.creado_por||""]));
+          if(r.section.importMode === "controles" && ctlInfo(row).summary){
+            xr.eachCell({includeEmpty:true}, function(cell){
+              cell.fill = {type:"pattern", pattern:"solid", fgColor:{argb:"FFD6E8F7"}};
+              cell.font = {bold:true};
+            });
+          }
         });
 
         // autofiltro en todo el encabezado: permite filtrar por Sondaje (o
