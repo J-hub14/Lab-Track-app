@@ -596,12 +596,59 @@
   function numOrZero(v){ var n = Number(v); return isNaN(n) ? 0 : n; }
   function controlsInserted(d){ var t = 0; CONTROL_TYPES.forEach(function(ct){ t += numOrZero(d[ct.key]); }); return t; }
   function controlsTotalBatch(d){ return (d.totalBatch === undefined || d.totalBatch === "" || d.totalBatch == null) ? null : numOrZero(d.totalBatch); }
+  // Una batch puede tardar varios días en insertarse: cada día se agrega una fila
+  // (con su fecha) y el pendiente se calcula acumulando todos los días del mismo
+  // batch + sondaje. La fila "Resumen" (sin fecha, la que crea el Excel) guarda
+  // el plan y muestra el acumulado total.
+  var ctlCtx = {};
+  function isControlsSummaryRow(d){ return !d.fecha && controlsInserted(d) === 0; }
+  function buildControlsCtx(rows){
+    ctlCtx = {};
+    var groups = {};
+    rows.forEach(function(row){
+      var d = row.payload || {};
+      var k = String(d.batch||"").trim() + "|" + String(d.sondaje||"").trim();
+      (groups[k] = groups[k] || []).push(row);
+    });
+    Object.keys(groups).forEach(function(k){
+      var list = groups[k], totalBatch = null;
+      list.forEach(function(row){ var tb = controlsTotalBatch(row.payload||{}); if(tb !== null) totalBatch = tb; });
+      var plan = {};
+      list.forEach(function(row){ var d = row.payload||{}; CONTROL_TYPES.forEach(function(ct){ if(d[ct.plan] !== undefined && d[ct.plan] !== "") plan[ct.key] = d[ct.plan]; }); });
+      var dated = list.filter(function(r){ return !isControlsSummaryRow(r.payload||{}); });
+      dated.sort(function(a,b){
+        var fa = (a.payload||{}).fecha || "9999", fb = (b.payload||{}).fecha || "9999";
+        if(fa !== fb) return fa < fb ? -1 : 1;
+        return String(a.creado_en||"") < String(b.creado_en||"") ? -1 : 1;
+      });
+      var acum = 0, accType = {};
+      CONTROL_TYPES.forEach(function(ct){ accType[ct.key] = 0; });
+      dated.forEach(function(row){
+        var d = row.payload||{};
+        acum += controlsInserted(d);
+        CONTROL_TYPES.forEach(function(ct){ accType[ct.key] += numOrZero(d[ct.key]); });
+        var snap = {}; CONTROL_TYPES.forEach(function(ct){ snap[ct.key] = accType[ct.key]; });
+        ctlCtx[row.id] = {summary:false, totalBatch:totalBatch, acum:acum, accType:snap, plan:plan,
+          pend: totalBatch === null ? null : totalBatch - acum};
+      });
+      list.forEach(function(row){
+        if(!isControlsSummaryRow(row.payload||{})) return;
+        var snap = {}; CONTROL_TYPES.forEach(function(ct){ snap[ct.key] = accType[ct.key]; });
+        ctlCtx[row.id] = {summary:true, totalBatch:totalBatch, acum:acum, accType:snap, plan:plan,
+          pend: totalBatch === null ? null : totalBatch - acum};
+      });
+    });
+  }
+  function ctlInfo(row){
+    return (row && ctlCtx[row.id]) || {summary:false, totalBatch:null, acum:0, accType:{}, plan:{}, pend:null};
+  }
   var CALC_COLS_CONTROLES = [
-    {label:"Total Insertados", get:function(d){ return controlsInserted(d); }},
-    {label:"Total Pendientes", get:function(d){ var tb = controlsTotalBatch(d); return tb === null ? null : tb - controlsInserted(d); },
+    {label:"Total Insertados", get:function(d,row){ var c = ctlInfo(row); return c.summary ? c.acum : controlsInserted(d); }},
+    {label:"Total Pendientes", get:function(d,row){ return ctlInfo(row).pend; },
       tone:function(v){ return v > 0 ? "warn" : "good"; }},
-    {label:"Total Batch", get:function(d){ return controlsTotalBatch(d); }}
+    {label:"Total Batch", get:function(d,row){ var c = ctlInfo(row); return c.totalBatch; }}
   ];
+
 
   var FIELDS_BATCH5  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic, F.fechaResult];
   var FIELDS_BATCH4  = [F.batch, F.dispatch, F.labJob, F.numMuestras, F.fechaSolic];
@@ -1289,7 +1336,7 @@
         body.appendChild(el("div", {class:"excel-box"}, [
           el("div", {}, [
             el("h3", {}, ["Excel de batches (BATCH_LABORATORIO)"]),
-            el("p", {}, ["Sube el Excel para que se calculen solos los controles que debe llevar cada batch y el Total Batch. Se reparte según el sondaje: ED → Exploraciones, MR → Mina (MR26019-11 y MR26036-11 van a Exploraciones). Puedes volver a subirlo cuando se actualice: se actualizan los totales sin borrar lo que ya escribiste como insertado."])
+            el("p", {}, ["Sube el Excel para que se calculen solos los controles que debe llevar cada batch y el Total Batch. Se reparte según el sondaje: ED → Exploraciones, MR → Mina (MR26019-11 y MR26036-11 van a Exploraciones). Puedes volver a subirlo cuando se actualice: se actualizan los totales sin borrar lo que ya registraste. Cada batch aparece con una fila \"Resumen\" (el plan del Excel); cada día que insertes controles, agrega una fila nueva con la fecha, el batch, el sondaje y lo insertado ese día: los pendientes se van descontando solos."])
           ]),
           el("div", {style:"display:flex;align-items:center;gap:10px;flex-wrap:wrap;"}, [importBtn, fileInput, importStatus])
         ]));
@@ -1363,7 +1410,7 @@
         for(var ci=0; ci<section.calcCols.length; ci++){
           var cfv = filters["__calc"+ci];
           if(!cfv) continue;
-          var cval = section.calcCols[ci].get(data);
+          var cval = section.calcCols[ci].get(data, row);
           var cstr = cval == null ? "—" : String(cval);
           if(cstr.toLowerCase().indexOf(cfv.toLowerCase()) === -1) return false;
         }
@@ -1393,6 +1440,7 @@
       return true;
     }
     function applyFilters(){
+      if(section.importMode === "controles") buildControlsCtx(lastRows);
       renderRows(tbody, section, lastRows.filter(rowMatches), colCount(), showDays, canEdit);
     }
 
@@ -1441,16 +1489,30 @@
       section.fields.forEach(function(f){
         if(!isEditing){
           if(f.planKey){
-            // control: muestra "insertados / plan" (el plan viene del Excel de batches)
-            var planV = data[f.planKey];
+            // control: en la fila "Resumen" muestra "acumulado / plan" (el plan viene del
+            // Excel de batches); en una fila de un día muestra lo insertado ese día
+            var ci = ctlInfo(row);
+            var planV = ci.plan[f.key];
             var hasPlan = planV !== undefined && planV !== "" && planV != null;
-            var insV = numOrZero(data[f.key]);
-            var txt, tone = "";
-            if(hasPlan){
-              if(numOrZero(planV) === 0 && insV === 0){ txt = "—"; }
-              else { txt = insV + " / " + planV; tone = insV >= numOrZero(planV) ? " ctl-ok" : " ctl-pend"; }
-            } else { txt = data[f.key] || "—"; }
-            tr.appendChild(el("td",{},[el("span",{class:"cell-view"+tone, title:"Insertados / según Excel: " + txt},[txt])]));
+            var txt, tone = "", tip;
+            if(ci.summary){
+              var accV = ci.accType[f.key] || 0;
+              if(hasPlan){
+                if(numOrZero(planV) === 0 && accV === 0){ txt = "—"; }
+                else { txt = accV + " / " + planV; tone = accV >= numOrZero(planV) ? " ctl-ok" : " ctl-pend"; }
+              } else { txt = accV ? String(accV) : "—"; }
+              tip = "Acumulado / según Excel: " + txt;
+            } else {
+              var dayV = numOrZero(data[f.key]);
+              txt = dayV ? String(dayV) : "—";
+              var accD = ci.accType[f.key] || 0;
+              tip = "Este día: " + dayV + (hasPlan ? " · Acumulado " + accD + " / " + planV : "");
+            }
+            tr.appendChild(el("td",{},[el("span",{class:"cell-view"+tone, title:tip},[txt])]));
+            return;
+          }
+          if(section.importMode === "controles" && f.key === "fecha" && ctlInfo(row).summary){
+            tr.appendChild(el("td",{},[el("span",{class:"cell-view", title:"Fila resumen del batch (viene del Excel). Para registrar un día, agrega una fila nueva con fecha."},["Resumen"])]));
             return;
           }
           tr.appendChild(el("td",{},[el("span",{class:"cell-view", title:data[f.key]||""},[data[f.key] || "—"])]));
@@ -1480,7 +1542,7 @@
       });
       if(section.calcCols){
         section.calcCols.forEach(function(c){
-          var v = c.get(data);
+          var v = c.get(data, row);
           var tn = (c.tone && v != null) ? (" ctl-" + (c.tone(v)==="good" ? "ok" : "pend")) : "";
           tr.appendChild(el("td",{},[el("span",{class:"cell-view mono"+tn},[v == null ? "—" : String(v)])]));
         });
@@ -1804,6 +1866,9 @@
           var existing = {};
           (res.data||[]).forEach(function(rw){
             var d = rw.payload || {};
+            // solo la fila que guarda el plan (la creada por el Excel) se actualiza;
+            // las filas de cada día (con fecha) no se tocan
+            if(d.totalBatch === undefined || d.totalBatch === "" || d.totalBatch == null) return;
             existing[rw.area + "|" + String(d.batch||"").trim() + "|" + String(d.sondaje||"").trim()] = rw;
           });
 
@@ -1865,6 +1930,7 @@
       var wb = new ExcelJS.Workbook();
       results.forEach(function(r){
         var calc = r.section.calcCols || [];
+        if(r.section.importMode === "controles") buildControlsCtx(r.rows);
         var header = r.section.fields.map(function(f){ return f.label; }).concat(calc.map(function(c){ return c.label; })).concat(["Ingresado por"]);
         var name = r.section.sheet.slice(0,31);
         var ws = wb.addWorksheet(name);
@@ -1880,7 +1946,7 @@
         r.rows.forEach(function(row){
           var data = row.payload || {};
           ws.addRow(r.section.fields.map(function(f){ return excelCellValue(f, data[f.key]||""); })
-            .concat(calc.map(function(c){ var v = c.get(data); return v == null ? "" : v; }))
+            .concat(calc.map(function(c){ var v = c.get(data, row); return v == null ? "" : v; }))
             .concat([row.creado_por||""]));
         });
 
