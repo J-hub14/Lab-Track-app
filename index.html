@@ -1191,7 +1191,26 @@
     })).then(function(results){
       grid.innerHTML = "";
       var totalAll=0, goodAll=0, warnAll=0, badAll=0;
+      var pendingBatches = [], batchesTotal = 0, batchesDone = 0;
       results.forEach(function(r){
+        if(r.section.importMode === "controles"){
+          buildControlsCtx(r.rows);
+          r.rows.forEach(function(row){
+            var ci = ctlInfo(row);
+            if(!ci.summary) return;
+            batchesTotal++;
+            if(ci.pend !== null && ci.pend <= 0) batchesDone++;
+            if(ci.pend !== null && ci.pend > 0){
+              var d = row.payload || {};
+              pendingBatches.push({batch:String(d.batch||""), sondaje:String(d.sondaje||""), ins:ci.acum, pend:ci.pend, total:ci.totalBatch});
+            }
+          });
+          pendingBatches.sort(function(a,b){
+            var na = Number(a.batch), nb = Number(b.batch);
+            if(!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+            return a.sondaje < b.sondaje ? -1 : 1;
+          });
+        }
         var good=0, warn=0, bad=0;
         r.rows.forEach(function(row){
           var st = computeStatus(row.payload||{}, r.section.status);
@@ -1203,6 +1222,12 @@
           groupChipEl(r.section.group),
           el("div", {class:"ttl"}, [r.section.title + " · " + r.rows.length]),
         ]);
+        if(r.section.importMode === "controles"){
+          card.appendChild(el("div", {class:"breakdown"}, [
+            el("span",{},[el("span",{class:"dot good"}), batchesDone + " completados"]),
+            el("span",{},[el("span",{class:"dot warn"}), pendingBatches.length + " pendientes"])
+          ]));
+        }
         if(r.section.status){
           card.appendChild(el("div", {class:"breakdown"}, [
             el("span",{},[el("span",{class:"dot good"}), String(good)]),
@@ -1218,7 +1243,32 @@
       stats.appendChild(el("div",{class:"stat-tile good"},[el("div",{class:"n"},[String(goodAll)]), el("div",{class:"lbl"},["Completados"])]));
       stats.appendChild(el("div",{class:"stat-tile warn"},[el("div",{class:"n"},[String(warnAll)]), el("div",{class:"lbl"},["Pendientes"])]));
       stats.appendChild(el("div",{class:"stat-tile bad"},[el("div",{class:"n"},[String(badAll)]), el("div",{class:"lbl"},["Atrasados (>15 días hábiles)"])]));
+      if(batchesTotal > 0){
+        stats.appendChild(el("div",{class:"stat-tile good"},[el("div",{class:"n"},[String(batchesDone)]), el("div",{class:"lbl"},["Batches completados (Inserción de Controles)"])]));
+        stats.appendChild(el("div",{class:"stat-tile warn"},[el("div",{class:"n"},[String(pendingBatches.length)]), el("div",{class:"lbl"},["Batches pendientes (Inserción de Controles)"])]));
+      }
       body.insertBefore(stats, grid);
+
+      if(batchesTotal > 0){
+        var pbox = el("div", {style:"margin-top:22px;"});
+        pbox.appendChild(el("h3", {style:"margin:0 0 8px;font-size:14px;"}, ["Batches pendientes · Inserción de Controles (" + pendingBatches.length + ")"]));
+        if(pendingBatches.length === 0){
+          pbox.appendChild(el("div", {class:"empty-state"}, ["No hay batches pendientes."]));
+        } else {
+          var tbl = el("table", {class:"data"});
+          tbl.appendChild(el("thead", {}, [el("tr", {}, ["Batch","Sondaje","Total Insertados","Total Pendientes","Total Batch"].map(function(h){ return el("th",{},[h]); }))]));
+          var tb = el("tbody");
+          pendingBatches.forEach(function(b){
+            tb.appendChild(el("tr", {}, [
+              el("td",{},[b.batch]), el("td",{},[b.sondaje]), el("td",{},[String(b.ins)]),
+              el("td",{},[el("span",{class:"cell-view ctl-pend"},[String(b.pend)])]), el("td",{},[b.total === null ? "—" : String(b.total)])
+            ]));
+          });
+          tbl.appendChild(tb);
+          pbox.appendChild(el("div", {style:"max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:10px;"}, [tbl]));
+        }
+        body.appendChild(pbox);
+      }
     }).catch(function(){
       grid.innerHTML = "";
       grid.appendChild(el("div",{class:"empty-state"},["No se pudo cargar el resumen."]));
