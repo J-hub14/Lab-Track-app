@@ -2084,6 +2084,54 @@
     }
     card.appendChild(list);
 
+    // ---- crear usuario nuevo (usuario + contraseña) directamente desde la app ----
+    var newUser = el("input",{type:"text", placeholder:"ej. maria", autocomplete:"off", autocapitalize:"off"});
+    var newPass = el("input",{type:"password", placeholder:"mínimo 6 caracteres", autocomplete:"new-password"});
+    var showPass = el("button",{class:"btn", type:"button", onclick:function(){
+      var show = newPass.type === "password";
+      newPass.type = show ? "text" : "password";
+      showPass.textContent = show ? "Ocultar" : "Mostrar";
+    }},["Mostrar"]);
+    var createBtn = el("button",{class:"btn primary", type:"button", onclick:function(){
+      var uname = newUser.value.trim().toLowerCase();
+      if(uname.slice(-LOGIN_DOMAIN.length) === LOGIN_DOMAIN) uname = uname.slice(0, -LOGIN_DOMAIN.length);
+      var pass = newPass.value;
+      if(!uname){ newUser.focus(); return; }
+      if(!/^[a-z0-9._-]+$/.test(uname)){ alert("El usuario solo puede tener letras sin tilde, números, punto, guion o guion bajo (sin espacios)."); newUser.focus(); return; }
+      if(pass.length < 6){ alert("La contraseña debe tener al menos 6 caracteres."); newPass.focus(); return; }
+      var email = uname + LOGIN_DOMAIN;
+      createBtn.disabled = true;
+      sb.rpc("labtrack_admin_set_user", {p_email: email, p_password: pass}).then(function(res){
+        if(res.error) throw res.error;
+        var accion = res.data;
+        // lo dejamos en la lista de permisos (sin secciones: solo lectura) para que se pueda configurar
+        return sb.from("user_permissions").insert({user_email: email, is_admin:false, allowed_sections:[]}).then(function(r2){
+          if(r2.error && r2.error.code !== "23505") throw r2.error;
+          newUser.value = ""; newPass.value = "";
+          alert((accion === "actualizado" ? "La contraseña de " : "Usuario creado: ") + uname + (accion === "actualizado" ? " fue actualizada." : ".") +
+            "\n\nPara entrar a LabTrack debe escribir:\nUsuario: " + uname + "\nContraseña: la que acabas de poner." +
+            (accion === "actualizado" ? "" : "\n\nPor ahora solo puede ver y descargar. Marca abajo las secciones que puede editar."));
+          loadAllPermissions();
+        });
+      }).catch(function(err){
+        var m = (err && err.message) || "error";
+        if(/labtrack_admin_set_user/.test(m) && /(find|exist|schema cache)/i.test(m)){
+          m = "Falta correr el script SQL \"crear_usuarios_labtrack.sql\" en Supabase (solo una vez).";
+        }
+        alert("No se pudo crear el usuario: " + m);
+      }).finally(function(){ createBtn.disabled = false; });
+    }}, ["Crear usuario"]);
+    card.appendChild(el("h3",{style:"margin:18px 0 6px;font-size:14px;"},["Crear usuario nuevo"]));
+    card.appendChild(el("div",{class:"perm-add-row"},[
+      el("div",{class:"f"},[el("label",{},["Usuario (lo que escribirá para entrar)"]), newUser]),
+      el("div",{class:"f"},[el("label",{},["Contraseña"]), el("div",{style:"display:flex;gap:6px;"},[newPass, showPass])]),
+      createBtn
+    ]));
+    card.appendChild(el("p",{class:"modal-note"},[
+      "Si escribes un usuario que ya existe, se cambia su contraseña. Los usuarios nuevos empiezan en modo solo lectura hasta que les marques secciones."
+    ]));
+
+    card.appendChild(el("h3",{style:"margin:18px 0 6px;font-size:14px;"},["Agregar a la lista un usuario que ya existe"]));
     var addEmail = el("input",{type:"text", placeholder:"correo@labtrack.app"});
     var addBtn = el("button",{class:"btn primary", type:"button", onclick:function(){
       var email = addEmail.value.trim().toLowerCase();
@@ -2098,7 +2146,7 @@
       }).finally(function(){ addBtn.disabled = false; });
     }}, ["+ Agregar usuario"]);
     card.appendChild(el("div",{class:"perm-add-row"},[
-      el("div",{class:"f"},[el("label",{},["Correo del usuario (debe tener cuenta creada ya en Supabase)"]), addEmail]),
+      el("div",{class:"f"},[el("label",{},["Correo del usuario (ya creado antes en Supabase)"]), addEmail]),
       addBtn
     ]));
   }
@@ -2130,6 +2178,19 @@
     var headRow = el("div",{class:"head"},[
       el("span",{class:"email"},[row.user_email]),
       el("label",{class:"perm-admin-toggle"},[adminChk, "Administrador (acceso total)"]),
+      el("button",{class:"btn", type:"button", title:"Cambiar la contraseña de este usuario", onclick:function(){
+        var np = prompt("Nueva contraseña para " + row.user_email + " (mínimo 6 caracteres):");
+        if(np === null) return;
+        if(np.length < 6){ alert("La contraseña debe tener al menos 6 caracteres."); return; }
+        sb.rpc("labtrack_admin_set_user", {p_email: row.user_email, p_password: np}).then(function(res){
+          if(res.error) throw res.error;
+          alert("Contraseña actualizada para " + row.user_email + ".");
+        }).catch(function(err){
+          var m = (err && err.message) || "error";
+          if(/labtrack_admin_set_user/.test(m) && /(find|exist|schema cache)/i.test(m)) m = "Falta correr el script SQL \"crear_usuarios_labtrack.sql\" en Supabase (solo una vez).";
+          alert("No se pudo cambiar la contraseña: " + m);
+        });
+      }},["Cambiar contraseña"]),
       el("button",{class:"icon-btn", title:"Quitar de la lista", onclick:function(){
         if(confirm("¿Quitar a " + row.user_email + " de la lista de permisos?\n\nSeguirá pudiendo ver y descargar todo si su cuenta sigue activa, pero ya no podrá agregar, editar ni borrar nada.")){
           sb.from("user_permissions").delete().eq("user_email", row.user_email).then(function(res){
